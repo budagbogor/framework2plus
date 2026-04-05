@@ -4,15 +4,20 @@
 
 Cocok untuk semua level — dari orang awam hingga developer berpengalaman.
 
+> [!IMPORTANT]
+> **[LIHAT DOKUMENTASI LENGKAP (DOCUMENTATION.md)](./DOCUMENTATION.md)**
+
 ---
 
 ## ✨ Fitur Utama
 
 - 🧠 **Smart Recommendations** — Setiap pilihan teknologi direkomendasikan otomatis berdasarkan konteks project
 - 📖 **Penjelasan Ramah Pemula** — Setiap teknologi punya kelebihan, kekurangan, dan "cocok untuk siapa"
-- 🏗️ **Dua Framework Lengkap:**
-  - **SDLC Master** — Untuk web app, mobile, API, SaaS, e-commerce
-  - **ADLC Agentic** — Untuk AI agent, chatbot cerdas, RAG, workflow otomatis
+- 🚀 **Interactive Guide Center** — Menu panduan langsung di dalam aplikasi untuk workflow terbaik
+- 🏗️ **Tiga Framework Lengkap:**
+  - **Framework 01 (Website)** — Untuk landing page, blog, portfolio
+  - **Framework 02 (Software)** — Untuk web app, mobile, API, SaaS
+  - **Framework 03 (Agentic AI)** — Untuk AI agent, chatbot cerdas, RAG
 - 📦 **4 Output Siap Pakai:**
   - Struktur folder project (dengan komentar penjelasan)
   - PRD / ADLC Master Plan (tinggal isi bagian kosong)
@@ -73,6 +78,7 @@ devforge-studio/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml      ← Auto-deploy ke GitHub Pages
+├── DOCUMENTATION.md        ← Dokumentasi Teknis Lengkap (Terbaru 2026) ⚡
 ├── package.json
 ├── .gitignore
 └── README.md
