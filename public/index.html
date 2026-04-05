@@ -1011,11 +1011,13 @@ const AI_PROVIDERS = {
     keyPlaceholder: 'sk-or-v1-xxxxxxxxxxxxxxxx',
     docsUrl: 'https://openrouter.ai/keys',
     models: [
-      {id:'google/gemini-2.0-flash-exp:free',            label:'Gemini 2.0 Flash (GRATIS)',      provider:'google',     free:true},
-      {id:'deepseek/deepseek-r1:free',                   label:'DeepSeek R1 (GRATIS)',            provider:'deepseek',   free:true},
-      {id:'meta-llama/llama-3.3-70b-instruct:free',      label:'Llama 3.3 70B (GRATIS)',         provider:'meta',       free:true},
-      {id:'qwen/qwen-2.5-coder-32b-instruct:free',       label:'Qwen 2.5 Coder 32B (GRATIS)',   provider:'qwen',       free:true},
-      {id:'mistralai/mistral-nemo:free',                 label:'Mistral Nemo (GRATIS)',           provider:'mistral',    free:true},
+      {id:'google/gemini-2.0-flash-exp:free',            label:'Gemini 2.0 Flash (GRATIS) — Cepat ✦',      provider:'google',     free:true},
+      {id:'google/phi-4:free',                           label:'Phi-4 (GRATIS) — Stabil ✦',               provider:'google',     free:true},
+      {id:'qwen/qwen-2.5-72b-instruct:free',            label:'Qwen 2.5 72B (GRATIS)',                   provider:'qwen',       free:true},
+      {id:'mistralai/mistral-small-24b-instruct-2501:free', label:'Mistral Small (GRATIS)',                 provider:'mistral',    free:true},
+      {id:'deepseek/deepseek-r1:free',                   label:'DeepSeek R1 (GRATIS)',                     provider:'deepseek',   free:true},
+      {id:'meta-llama/llama-3.3-70b-instruct:free',      label:'Llama 3.3 70B (GRATIS)',                  provider:'meta',       free:true},
+      {id:'microsoft/phi-3-medium-128k-instruct:free',   label:'Phi-3 Medium (GRATIS)',                   provider:'microsoft',  free:true},
       {id:'anthropic/claude-3.5-sonnet',                 label:'Claude 3.5 Sonnet',              provider:'anthropic',  free:false},
       {id:'anthropic/claude-3.7-sonnet',                 label:'Claude 3.7 Sonnet',              provider:'anthropic',  free:false},
       {id:'openai/gpt-4o',                               label:'GPT-4o',                         provider:'openai',     free:false},
@@ -3662,30 +3664,68 @@ Generate dalam format JSON valid dengan struktur:
 
 PENTING: Semua konten harus SPESIFIK ke project "${g.name}" — bukan template generic.`;
 
-      const apiUrl = `${provCfg.baseUrl}/chat/completions`;
-      const finalUrl = S.aiConfig.useProxy ? `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}` : apiUrl;
+      // Powerfull Auto-Switch & Retry Logic for OpenRouter Free
+      const freeFallbacks = [
+        'google/gemini-2.0-flash-exp:free',
+        'google/phi-4:free',
+        'qwen/qwen-2.5-72b-instruct:free',
+        'mistralai/mistral-small-24b-instruct-2501:free'
+      ];
+      
+      async function attemptRequest(currentModel) {
+          const body = {
+            model: currentModel,
+            messages: [
+              {role: 'system', content: systemPrompt},
+              {role: 'user', content: userPrompt}
+            ],
+            max_tokens: 4000,
+            temperature: 0.3,
+            response_format: {type: 'json_object'}
+          };
 
-      const res = await fetch(finalUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${S.aiConfig.apiKey}`,
-          'Content-Type': 'application/json',
-          ...(S.aiConfig.provider==='openrouter' ? {
-            'HTTP-Referer': 'https://devforge.local',
-            'X-Title': 'DevForge Studio'
-          } : {})
-        },
-        body: JSON.stringify({
-          model: S.aiConfig.model,
-          messages: [
-            {role: 'system', content: systemPrompt},
-            {role: 'user', content: userPrompt}
-          ],
-          max_tokens: 4000,
-          temperature: 0.3,
-          response_format: {type: 'json_object'}
-        })
-      });
+          if (S.aiConfig.useProxy) {
+            return await fetch('/api/ai-proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                provider: S.aiConfig.provider,
+                apiUrl: `${provCfg.baseUrl}/chat/completions`,
+                apiKey: S.aiConfig.apiKey,
+                payload: body
+              })
+            });
+          } else {
+            return await fetch(`${provCfg.baseUrl}/chat/completions`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${S.aiConfig.apiKey}`,
+                'Content-Type': 'application/json',
+                ...(S.aiConfig.provider==='openrouter' ? {
+                  'HTTP-Referer': 'https://devforge.studio',
+                  'X-Title': 'DevForge Studio'
+                } : {})
+              },
+              body: JSON.stringify(body)
+            });
+          }
+      }
+
+      let res = await attemptRequest(S.aiConfig.model);
+
+      // Auto-Switch logic if 429 occurs on OpenRouter Free
+      if (res.status === 429 && S.aiConfig.provider === 'openrouter' && S.aiConfig.model.endsWith(':free')) {
+          console.warn('Rate limit hit, attempting Auto-Switch...');
+          for (const fallback of freeFallbacks) {
+              if (fallback === S.aiConfig.model) continue;
+              loadingDiv.innerHTML = `<span style="color:#ffeb3b">⚠️ Rate Limit!</span> Auto-Switch ke model cadangan: ${fallback.split('/').pop()}...`;
+              res = await attemptRequest(fallback);
+              if (res.ok) {
+                  console.log(`Auto-Switch success! Used: ${fallback}`);
+                  break;
+              }
+          }
+      }
 
       document.getElementById('aiLoadingBanner')?.remove();
 
@@ -3903,46 +3943,74 @@ async function testAPIKey(){
   const apiUrl = `${prov.baseUrl}/chat/completions`;
   const internalProxyUrl = '/api/ai-proxy';
 
-  const logErr = (msg, detail) => {
-    console.error('[AI TEST]', msg, detail);
-    updateAIStatus('err', msg, detail);
-  };
+  const freeFallbacks = [
+    'google/gemini-2.0-flash-exp:free',
+    'google/phi-4:free',
+    'qwen/qwen-2.5-72b-instruct:free'
+  ];
+
+  async function attemptTest(modelId) {
+      const payload = {
+          model: modelId,
+          messages:[{role:'user',content:'Say OK'}],
+          max_tokens: 15
+      };
+
+      if (S.aiConfig.useProxy) {
+          return await fetch(internalProxyUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  provider: S.aiConfig.provider,
+                  apiUrl: apiUrl,
+                  apiKey: key,
+                  payload: payload
+              })
+          });
+      } else {
+          return await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                  'Authorization': `Bearer ${key}`,
+                  'Content-Type': 'application/json',
+                  ...(S.aiConfig.provider==='openrouter' ? {
+                    'HTTP-Referer': 'https://devforge.studio',
+                    'X-Title': 'DevForge Studio'
+                  } : {})
+              },
+              body: JSON.stringify(payload)
+          });
+      }
+  }
 
   try {
-    // 1. Determine the target for fetch
-    // If local dev without Proxy option enabled, still try direct (though CORS will likely block)
-    // If Proxy enabled, always use our new Serverless endpoint /api/ai-proxy
-    const fetchTarget = S.aiConfig.useProxy ? internalProxyUrl : apiUrl;
-    const fetchMethod = S.aiConfig.useProxy ? 'POST' : 'POST';
+    let res = await attemptTest(S.aiConfig.model);
     
-    const requestOptions = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(!S.aiConfig.useProxy ? { 'Authorization': `Bearer ${key}` } : {})
-        },
-        body: JSON.stringify(S.aiConfig.useProxy ? {
-          provider: S.aiConfig.provider,
-          apiUrl: apiUrl,
-          apiKey: key,
-          payload: {
-            model: S.aiConfig.model,
-            messages:[{role:'user',content:'Say OK'}],
-            max_tokens: 10
-          }
-        } : {
-          model: S.aiConfig.model,
-          messages:[{role:'user',content:'Say OK'}],
-          max_tokens: 10
-        })
-    };
+    // Auto-Switch logic if 429 occurs on OpenRouter Free during test
+    if (res.status === 429 && S.aiConfig.provider === 'openrouter' && S.aiConfig.model.endsWith(':free')) {
+        console.warn('Rate limit hit during test, attempting Auto-Switch...');
+        for (const fallback of freeFallbacks) {
+            if (fallback === S.aiConfig.model) continue;
+            updateAIStatus('loading', `⏳ Rate Limit! Mencoba cadangan: ${fallback.split('/').pop()}...`);
+            res = await attemptTest(fallback);
+            if (res.ok) {
+                const data = await res.json();
+                S.aiConfig.connected = true;
+                // Update select UI
+                const sel = document.getElementById('aiModelSel');
+                if(sel) sel.value = fallback;
+                S.aiConfig.model = fallback;
+                updateAIStatus('ok', `✅ Berhasil Auto-Switch ke: ${fallback.split('/').pop()}`);
+                return;
+            }
+        }
+    }
 
-    const res = await fetch(fetchTarget, requestOptions);
-    
     if(!res.ok){ 
-      let bodyText = '';
-      try { bodyText = await res.text(); } catch(e){}
-      throw new Error(`Server returned ${res.status}: ${bodyText.substring(0,100)}...`);
+      let bodyData = {};
+      try { bodyData = await res.json(); } catch(e){}
+      const errDetail = bodyData.error?.message || bodyData.message || res.statusText;
+      throw new Error(`Server returned ${res.status}: ${errDetail}`);
     }
     
     const data = await res.json();
@@ -3950,18 +4018,11 @@ async function testAPIKey(){
       S.aiConfig.connected = true;
       updateAIStatus('ok', `✅ Terhubung! Model: ${S.aiConfig.model.split('/').pop()}`);
     } else {
-       throw new Error('Format respons tidak didukung oleh Proxy/Provider.');
+       throw new Error('Format respons tidak dikenal.');
     }
   } catch(err){
     S.aiConfig.connected = false;
-    let msg = err.message;
-    let detail = '';
-    if(msg==='Failed to fetch'){
-      msg = 'Network Error / Proxy Aborted';
-      detail = `Browser/Server memblokir koneksi. 
-                <br>Pastikan Anda menjalankan aplikasi via <strong>npx vercel dev</strong> untuk mengaktifkan fungsi Proxy di /api.`;
-    }
-    logErr(msg, detail);
+    updateAIStatus('err', err.message);
   }
 }
 
