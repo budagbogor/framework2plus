@@ -1011,13 +1011,13 @@ const AI_PROVIDERS = {
     keyPlaceholder: 'sk-or-v1-xxxxxxxxxxxxxxxx',
     docsUrl: 'https://openrouter.ai/keys',
     models: [
-      {id:'google/gemini-2.0-flash-exp:free',            label:'Gemini 2.0 Flash (GRATIS) — Cepat ✦',      provider:'google',     free:true},
-      {id:'google/phi-4:free',                           label:'Phi-4 (GRATIS) — Stabil ✦',               provider:'google',     free:true},
-      {id:'qwen/qwen-2.5-72b-instruct:free',            label:'Qwen 2.5 72B (GRATIS)',                   provider:'qwen',       free:true},
-      {id:'mistralai/mistral-small-24b-instruct-2501:free', label:'Mistral Small (GRATIS)',                 provider:'mistral',    free:true},
-      {id:'deepseek/deepseek-r1:free',                   label:'DeepSeek R1 (GRATIS)',                     provider:'deepseek',   free:true},
+      {id:'google/gemma-3-27b-it:free',                  label:'Gemma 3 27B (GRATIS) — Terbaik ✦',     provider:'google',     free:true},
+      {id:'qwen/qwen3.6-plus:free',                     label:'Qwen 3.6 Plus (GRATIS) — Cerdas ✦',     provider:'qwen',       free:true},
+      {id:'qwen/qwen3-coder:free',                      label:'Qwen 3 Coder (GRATIS) — Spesialis ✦',   provider:'qwen',       free:true},
       {id:'meta-llama/llama-3.3-70b-instruct:free',      label:'Llama 3.3 70B (GRATIS)',                  provider:'meta',       free:true},
-      {id:'microsoft/phi-3-medium-128k-instruct:free',   label:'Phi-3 Medium (GRATIS)',                   provider:'microsoft',  free:true},
+      {id:'google/gemma-3-4b-it:free',                   label:'Gemma 3 4B (GRATIS) — Kilat ⚡',         provider:'google',     free:true},
+      {id:'liquid/lfm-2.5-1.2b-thinking:free',          label:'Liquid 2.5 (GRATIS) — Thinking 🧠',      provider:'liquid',     free:true},
+      {id:'openai/gpt-oss-120b:free',                    label:'GPT-OSS 120B (GRATIS)',                  provider:'openai',     free:true},
       {id:'anthropic/claude-3.5-sonnet',                 label:'Claude 3.5 Sonnet',              provider:'anthropic',  free:false},
       {id:'anthropic/claude-3.7-sonnet',                 label:'Claude 3.7 Sonnet',              provider:'anthropic',  free:false},
       {id:'openai/gpt-4o',                               label:'GPT-4o',                         provider:'openai',     free:false},
@@ -3664,12 +3664,12 @@ Generate dalam format JSON valid dengan struktur:
 
 PENTING: Semua konten harus SPESIFIK ke project "${g.name}" — bukan template generic.`;
 
-      // Powerfull Auto-Switch & Retry Logic for OpenRouter Free
+      // Powerfull Auto-Switch & Retry Logic for OpenRouter Free (Updated 2026)
       const freeFallbacks = [
-        'google/gemini-2.0-flash-exp:free',
-        'google/phi-4:free',
-        'qwen/qwen-2.5-72b-instruct:free',
-        'mistralai/mistral-small-24b-instruct-2501:free'
+        'google/gemma-3-27b-it:free',
+        'qwen/qwen3.6-plus:free',
+        'qwen/qwen3-coder:free',
+        'google/gemma-3-4b-it:free'
       ];
       
       async function attemptRequest(currentModel) {
@@ -3944,9 +3944,10 @@ async function testAPIKey(){
   const internalProxyUrl = '/api/ai-proxy';
 
   const freeFallbacks = [
-    'google/gemini-2.0-flash-exp:free',
-    'google/phi-4:free',
-    'qwen/qwen-2.5-72b-instruct:free'
+    'google/gemma-3-27b-it:free',
+    'qwen/qwen3.6-plus:free',
+    'qwen/qwen3-coder:free',
+    'google/gemma-3-4b-it:free'
   ];
 
   async function attemptTest(modelId) {
