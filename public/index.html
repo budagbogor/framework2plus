@@ -4,34 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DevForge — Smart Framework Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;
-  --surface:#ffffff;--surface2:#f8fafc;
-  --border:#e2e8f0;--border2:#cbd5e1;
-  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
-  --accent:#3b82f6;--accent-light:#eff6ff;--accent-mid:#2563eb;
-  --green:#10b981;--green-light:#ecfdf5;
-  --amber:#d97706;--amber-light:#fffbeb;
-  --red:#ef4444;--red-light:#fef2f2;
-  --gold:#eab308;--gold-light:#fefce8;
-  --font:'Inter',sans-serif;
-  --font-h:'Space Grotesk',sans-serif;
+  --bg:#F5F5F5;--bg2:#FFFFFF;--bg3:#EAECEB;
+  --surface:#FFFFFF;--surface2:#FDFDFD;
+  --border:#DDE2E1;--border2:#8E9A98;
+  --text:#35627A;--text2:#517182;--text3:#8E9A98;
+  --accent:#35627A;--accent-light:rgba(53,98,122,0.1);--accent-mid:#25475A;
+  --green:#35627A;--green-light:rgba(53,98,122,0.1);
+  --amber:#35627A;--amber-light:rgba(53,98,122,0.1);
+  --pink:#35627A;--pink-light:rgba(53,98,122,0.1);
+  --red:#35627A;--red-light:rgba(53,98,122,0.1);
+  --gold:#35627A;--gold-light:rgba(53,98,122,0.05);
+  --font:'Plus Jakarta Sans',sans-serif;
+  --font-h:'Plus Jakarta Sans',sans-serif;
   --mono:'JetBrains Mono',monospace;
   --r:10px;--r-lg:16px;--r-xl:24px;
 }
 [data-theme='dark']{
-  --bg:#050511;--bg2:#0a0a1a;--bg3:#13132a;
-  --surface:#0a0a18;--surface2:#15152e;
-  --border:rgba(0, 240, 255, 0.15);--border2:rgba(255, 0, 85, 0.3);
-  --text:#e0f8ff;--text2:#8ca2b0;--text3:#5c7285;
-  --accent:#00f0ff;--accent-light:rgba(0,240,255,0.15);--accent-mid:#00b8cc;
-  --green:#39ff14;--green-light:rgba(57,255,20,0.15);
-  --amber:#fcee0a;--amber-light:rgba(252,238,10,0.15);
-  --red:#ff0055;--red-light:rgba(255,0,85,0.15);
-  --gold:#eab308;--gold-light:rgba(234,179,8,0.15);
+  --bg:#121C24;--bg2:#182531;--bg3:#1F303F;
+  --surface:#182531;--surface2:#1F303F;
+  --border:rgba(142,154,152,0.2);--border2:rgba(142,154,152,0.4);
+  --text:#F5F5F5;--text2:#A6A9D0;--text3:#8E9A98;
+  --accent:#A6A9D0;--accent-light:rgba(166,169,208,0.15);--accent-mid:#8E92BC;
+  --green:#A6A9D0;--green-light:rgba(166,169,208,0.15);
+  --amber:#A6A9D0;--amber-light:rgba(166,169,208,0.15);
+  --pink:#A6A9D0;--pink-light:rgba(166,169,208,0.15);
+  --red:#A6A9D0;--red-light:rgba(166,169,208,0.15);
+  --gold:#A6A9D0;--gold-light:rgba(166,169,208,0.1);
 }
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background-color 0.3s, color 0.3s}
 
@@ -43,23 +46,75 @@ body::after{content:'';position:fixed;inset:0;opacity:.025;pointer-events:none;z
 #app{max-width:1400px;margin:0 auto;padding:100px 32px 80px}
 
 /* ── Global Navigation ── */
-.top-nav{position:fixed;top:0;left:0;right:0;height:70px;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);
+.top-nav{position:fixed;top:0;left:0;right:0;height:70px;background:rgba(var(--bg),0.85);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);z-index:999;display:flex;align-items:center;transition:background-color 0.3s, border-color 0.3s}
 .nav-container{max-width:1400px;width:100%;margin:0 auto;padding:0 32px;display:flex;justify-content:space-between;align-items:center}
-[data-theme='dark'] .top-nav{background:rgba(5,5,17,0.7); border-bottom:1px solid rgba(0,240,255,0.2); box-shadow:0 0 15px rgba(0,240,255,0.05)}
 .nav-actions{display:flex;gap:8px}
 .nav-btn{background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all 0.15s;display:flex;align-items:center;gap:6px}
 .nav-btn:hover{color:var(--text);border-color:var(--border2)}
+.nav-btn.ai-active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.nav-btn.ai-connected{background:var(--green-light);color:var(--green);border-color:var(--green)}
+
+/* ── AI Settings Modal ── */
+.ai-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:2000;
+  display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+.ai-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:32px;width:100%;max-width:520px;box-shadow:0 24px 48px rgba(0,0,0,.15);
+  animation:fadeDown .25s ease;position:relative}
+.ai-modal-title{font-family:var(--font-h);font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px}
+.ai-modal-sub{font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.5}
+.ai-modal-close{position:absolute;top:16px;right:16px;background:var(--bg3);border:none;
+  width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:var(--text3);
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ai-modal-close:hover{background:var(--border);color:var(--text)}
+.ai-field{margin-bottom:16px}
+.ai-label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;display:block}
+.ai-select,.ai-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--bg3);color:var(--text);font-family:var(--font);font-size:14px;outline:none;
+  transition:border-color .2s, box-shadow .2s;appearance:none;cursor:pointer}
+.ai-select:focus,.ai-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.ai-input{font-family:var(--mono);font-size:13px;letter-spacing:.03em}
+.ai-provider-tabs{display:flex;gap:8px;margin-bottom:20px}
+.ai-prov-tab{flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--surface);cursor:pointer;text-align:center;transition:all .2s;font-family:var(--font)}
+.ai-prov-tab:hover{border-color:var(--border2)}
+.ai-prov-tab.active{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.ai-prov-tab .prov-name{font-size:13px;font-weight:700;display:block}
+.ai-prov-tab .prov-url{font-size:10px;color:var(--text3);margin-top:2px}
+.ai-prov-tab.active .prov-url{color:var(--accent)}
+.ai-row{display:flex;gap:10px}
+.ai-row .ai-field{flex:1}
+.ai-status-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;
+  background:var(--bg3);border:1px solid var(--border);margin-bottom:16px;font-size:13px}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s}
+.ai-dot.green{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,.4)}
+.ai-dot.red{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.4)}
+.ai-dot.yellow{background:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.4);animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ai-status-text{flex:1;color:var(--text2)}
+.ai-footer{display:flex;gap:10px;margin-top:8px}
+.ai-test-btn{padding:10px 18px;border-radius:8px;border:1.5px solid var(--border);
+  background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:13px;
+  font-weight:700;cursor:pointer;transition:all .2s}
+.ai-test-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ai-save-btn{flex:1;padding:10px;border-radius:8px;border:none;
+  background:var(--accent);color:#fff;font-family:var(--font);font-size:14px;
+  font-weight:700;cursor:pointer;transition:all .2s}
+.ai-save-btn:hover{opacity:.9;transform:translateY(-1px)}
+.ai-usage-note{font-size:11px;color:var(--text3);text-align:center;margin-top:12px;line-height:1.5}
+.ai-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.ai-badge.free{background:rgba(34,197,94,.15);color:#16a34a;border:1px solid rgba(34,197,94,.3)}
+.ai-badge.paid{background:var(--accent-light);color:var(--accent);border:1px solid var(--border)}
 
 /* ── Hero / Header ── */
 .hero-sec{text-align:center;margin-bottom:32px;animation:fadeDown .5s ease both}
 .logo{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;
-  border-radius:2px;background:var(--accent-light);border:1px solid rgba(0,240,255,0.2);
+  border-radius:2px;background:var(--accent-light);border:1px solid var(--border);
   margin-bottom:18px;animation:fadeDown .5s ease both;cursor:pointer;transition:transform 0.15s, box-shadow 0.2s}
-.logo:hover{transform:translateY(-1px);box-shadow:0 0 10px var(--accent-light)}
-[data-theme='dark'] .logo{border-color:rgba(0,240,255,0.4);box-shadow:0 0 12px rgba(0,240,255,0.1)}
+.logo:hover{transform:translateY(-1px);box-shadow:0 4px 10px var(--accent-light)}
 .logo-dot{width:28px;height:28px;border-radius:2px;background:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-size:13px;color:#000;font-weight:bold}
+  display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:bold}
 .logo-text{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;font-family:var(--font-h)}
 h1{font-family:var(--font-h);font-size:clamp(32px,6vw,56px);font-weight:700;line-height:1.1;letter-spacing:-.03em;
   animation:fadeDown .5s .08s ease both;text-transform:uppercase}
@@ -71,11 +126,12 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 /* ── Mode cards ── */
 .mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:32px 0 24px;animation:fadeUp .5s .2s ease both}
 .mode-card{border:1px solid var(--border);border-radius:6px;padding:32px 24px;cursor:pointer;
-  background:rgba(255,255,255,0.02);backdrop-filter:blur(10px);transition:all .3s;position:relative;overflow:hidden;text-align:left}
-.mode-card:hover{border-color:var(--accent);box-shadow:0 8px 32px rgba(0,0,0,.15), inset 0 0 0 1px var(--accent-light);transform:translateY(-4px)}
-.mode-card.active{border-color:var(--accent);background:var(--accent-light);box-shadow:0 0 20px var(--accent-light), inset 0 0 15px rgba(0,240,255,0.1)}
-.mode-card.active.green-mode{border-color:var(--green);background:var(--green-light);box-shadow:0 0 20px var(--green-light), inset 0 0 15px rgba(57,255,20,0.1)}
-.mode-card.active.amber-mode{border-color:var(--amber);background:var(--amber-light);box-shadow:0 0 20px var(--amber-light), inset 0 0 15px rgba(252,238,10,0.1)}
+  background:var(--surface);transition:all .3s;position:relative;overflow:hidden;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
+.mode-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(53,98,122,.1);transform:translateY(-4px)}
+.mode-card.active{border-color:var(--accent);background:var(--accent-light);box-shadow:0 8px 24px var(--accent-light)}
+.mode-card.active.green-mode{border-color:var(--accent);background:var(--accent-light);box-shadow:0 8px 24px var(--accent-light)}
+.mode-card.active.pink-mode{border-color:var(--accent);background:var(--accent-light);box-shadow:0 8px 24px var(--accent-light)}
+.mode-card.active.amber-mode{border-color:var(--accent);background:var(--accent-light);box-shadow:0 8px 24px var(--accent-light)}
 .mode-badge{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;font-family:var(--font-h);
   padding:4px 12px;border-radius:2px;display:inline-block;margin-bottom:14px;border:1px solid currentColor}
 .badge-sdlc{background:transparent;color:var(--accent)}
@@ -85,10 +141,7 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 .mode-check{position:absolute;top:20px;right:20px;width:28px;height:28px;border-radius:2px;
   border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;
   font-size:14px;font-weight:700;transition:all .3s}
-.mode-card.active .mode-check,.mode-card.active.green-mode .mode-check,.mode-card.active.amber-mode .mode-check{color:#000}
-.mode-card.active .mode-check{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px var(--accent)}
-.mode-card.active.green-mode .mode-check{background:var(--green);border-color:var(--green);box-shadow:0 0 10px var(--green)}
-.mode-card.active.amber-mode .mode-check{background:var(--amber);border-color:var(--amber);box-shadow:0 0 10px var(--amber)}
+.mode-card.active .mode-check,.mode-card.active.green-mode .mode-check,.mode-card.active.amber-mode .mode-check,.mode-card.active.pink-mode .mode-check{color:#fff;background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px var(--accent)}
 .start-row{text-align:center;animation:fadeUp .4s .25s ease both}
 
 /* ── Progress ── */
@@ -108,9 +161,8 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 .crumb.active.green{background:var(--green);color:#fff}
 
 /* ── Question card ── */
-.q-card{background:rgba(255,255,255,0.02);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:6px;
-  padding:32px;margin-bottom:20px;animation:fadeIn .3s ease;box-shadow:0 10px 40px rgba(0,0,0,0.05)}
-[data-theme='dark'] .q-card{box-shadow:0 10px 40px rgba(0,0,0,0.4)}
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:32px;margin-bottom:20px;animation:fadeIn .3s ease;box-shadow:0 6px 24px var(--accent-light)}
 .q-section{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
   color:var(--accent);margin-bottom:8px;font-family:var(--font-h)}
 .q-section.green{color:var(--green)}
@@ -121,17 +173,15 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 .q-textarea{width:100%;border:1px solid var(--border);border-radius:2px;
   padding:16px;font-family:var(--mono);font-size:14px;color:var(--text);
   background:var(--bg3);resize:vertical;min-height:120px;outline:none;transition:all .3s}
-.q-textarea:focus{border-color:var(--accent);box-shadow:0 0 15px rgba(0,240,255,0.15), inset 0 0 5px rgba(0,240,255,0.1)}
-[data-theme='dark'] .q-textarea:focus{box-shadow:0 0 15px rgba(0,240,255,0.2), inset 0 0 5px rgba(0,240,255,0.2)}
+.q-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
 
 /* ── Tech option card (the magic) ── */
 .tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
 .tech-card{border:1px solid var(--border);border-radius:4px;padding:0;
   cursor:pointer;background:var(--surface);transition:all .25s;overflow:hidden;display:flex;flex-direction:column}
-.tech-card:hover{border-color:var(--accent);box-shadow:0 4px 20px rgba(0,0,0,.1), inset 0 0 0 1px rgba(0,240,255,0.1)}
-[data-theme='dark'] .tech-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,240,255,0.2)}
-.tech-card.selected{border-color:var(--accent);background:var(--accent-light);box-shadow:0 0 15px var(--accent-light)}
-.tech-card.selected.green{border-color:var(--green);background:var(--green-light);box-shadow:0 0 15px var(--green-light)}
+.tech-card:hover{border-color:var(--accent);box-shadow:0 6px 16px var(--accent-light)}
+.tech-card.selected{border-color:var(--accent);background:var(--accent-light);box-shadow:0 6px 16px var(--accent-light)}
+.tech-card.selected.green{border-color:var(--green);background:var(--green-light);box-shadow:0 6px 16px var(--green-light)}
 .tech-card.single-type{cursor:pointer}
 
 .tc-main{display:flex;align-items:flex-start;gap:14px;padding:16px;flex:1}
@@ -213,14 +263,13 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 
 /* ── Output ── */
 .out-wrap{animation:fadeIn .4s ease}
-.out-hero{background:transparent;border:1px solid var(--accent);border-radius:4px;padding:32px;margin-bottom:24px;
-  position:relative;overflow:hidden;box-shadow:0 0 30px rgba(0,240,255,0.1), inset 0 0 20px rgba(0,240,255,0.05)}
-[data-theme='dark'] .out-hero{border-color:var(--accent);box-shadow:0 0 40px rgba(0,240,255,0.15), inset 0 0 30px rgba(0,240,255,0.1)}
-.out-hero::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
-.out-hero.green{border-color:var(--green);box-shadow:0 0 30px rgba(57,255,20,0.1), inset 0 0 20px rgba(57,255,20,0.05)}
-.out-hero.green::before{background:var(--green);box-shadow:0 0 10px var(--green)}
-.out-hero.amber{border-color:var(--amber);box-shadow:0 0 30px rgba(252,238,10,0.1), inset 0 0 20px rgba(252,238,10,0.05)}
-.out-hero.amber::before{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.out-hero{background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:32px;margin-bottom:24px;
+  position:relative;overflow:hidden;box-shadow:0 6px 20px var(--accent-light), inset 0 0 1px var(--accent-light)}
+.out-hero::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent)}
+.out-hero.green{border-color:var(--green);box-shadow:0 6px 20px var(--green-light), inset 0 0 1px var(--green-light)}
+.out-hero.green::before{background:var(--green)}
+.out-hero.amber{border-color:var(--amber);box-shadow:0 6px 20px var(--amber-light), inset 0 0 1px var(--amber-light)}
+.out-hero.amber::before{background:var(--amber)}
 .out-hero-label{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;font-family:var(--font-h)}
 .out-hero.green .out-hero-label{color:var(--green)}
 .out-hero.amber .out-hero-label{color:var(--amber)}
@@ -228,17 +277,18 @@ h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 20px var(--accent-li
 .out-hero-meta{font-size:13px;display:flex;flex-wrap:wrap;gap:12px}
 .out-hero-chip{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:2px;font-family:var(--mono)}
 .out-hero-name{font-size:22px;font-weight:800;margin-bottom:4px}
-.out-hero-meta{font-size:12px;opacity:.8;display:flex;flex-wrap:wrap;gap:12px}
-.out-hero-chip{background:rgba(255,255,255,.2);padding:3px 10px;border-radius:20px}
+.out-hero-meta{font-size:12px;opacity:1;display:flex;flex-wrap:wrap;gap:12px}
+.out-hero-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);padding:4px 12px;border-radius:20px;color:inherit}
+.out-hero.green .out-hero-name, .out-hero.amber .out-hero-name, .out-hero.pink .out-hero-name {color: #fff}
+.out-hero.green .out-hero-label, .out-hero.amber .out-hero-label, .out-hero.pink .out-hero-label {color: rgba(255,255,255,0.8); text-shadow: none}
+.out-hero.green .out-hero-chip, .out-hero.amber .out-hero-chip, .out-hero.pink .out-hero-chip {background:rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.3)}
 
 .tab-nav{display:flex;gap:8px;background:var(--bg3);padding:6px;border-radius:4px;
   border:1px solid var(--border);flex-wrap:wrap;margin-bottom:20px}
 .tab-nav-btn{padding:10px 20px;border-radius:2px;border:1px solid transparent;background:transparent;
   color:var(--text3);font-family:var(--font-h);font-size:14px;font-weight:700;text-transform:uppercase;
   cursor:pointer;transition:all .2s;letter-spacing:.05em;flex:1;text-align:center}
-.tab-nav-btn.active{background:var(--surface);color:var(--accent);border-color:var(--border);box-shadow:0 0 10px rgba(0,240,255,0.05)}
-[data-theme='dark'] .tab-nav-btn.active{box-shadow:0 0 15px rgba(0,240,255,0.1)}
-.tab-nav-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-nav-btn.active{background:var(--surface);color:var(--accent);border-color:var(--border);box-shadow:0 2px 8px var(--accent-light)}
 .out-panel{display:none}
 .out-panel.active{display:block;animation:fadeIn .25s ease}
 
@@ -304,33 +354,53 @@ pre{padding:16px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-h
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Desktop / Amber mode ── */
-.badge-desktop{background:transparent;color:var(--amber)}
-.mode-card.active.amber-mode{border-color:var(--amber);background:var(--amber-light)}
-.mode-card.active.amber-mode .mode-check{color:#000;background:var(--amber);border-color:var(--amber)}
-.progress-fill.amber{background:var(--amber);box-shadow:0 0 10px var(--amber)}
-.crumb.done.amber{border-color:var(--amber);color:var(--amber)}
-.crumb.active.amber{background:var(--amber);color:#000;box-shadow:0 0 10px var(--amber)}
-.q-section.amber{color:var(--amber)}
-.tech-card.selected.amber{border-color:var(--amber);background:var(--amber-light)}
-.tech-card.selected.amber .tc-check{background:var(--amber);border-color:var(--amber);color:#fff}
-.chip.sel.amber{border-color:var(--amber);background:var(--amber-light);color:var(--amber)}
-.scale-card.selected.amber{border-color:var(--amber);background:var(--amber-light)}
-.btn-next.amber{background:var(--amber)}
-.btn-next.amber:hover{background:#b06800}
-.btn-generate.amber{background:var(--amber);box-shadow:0 4px 20px rgba(201,116,0,.25)}
-.btn-generate.amber:hover{box-shadow:0 8px 28px rgba(201,116,0,.35)}
-.phase-num.amber{background:var(--amber-light);color:var(--amber)}
-.phase-tag.amber{background:var(--amber-light);color:var(--amber)}
-.out-hero.amber{background:linear-gradient(135deg,#c97400,#e8940a)}
-.out-sec-icon.amber{background:var(--amber-light)}
+/* ── Mode Transitions ── */
+.badge-adlc{color:var(--accent);border-color:var(--accent)}
+.badge-desktop{color:var(--accent);border-color:var(--accent)}
+.progress-fill.green,.progress-fill.amber,.progress-fill.pink{background:var(--accent);box-shadow:0 0 10px var(--accent-light)}
+.crumb.done.green,.crumb.done.amber,.crumb.done.pink{background:var(--accent-light);color:var(--accent)}
+.crumb.active.green,.crumb.active.amber,.crumb.active.pink{background:var(--accent);color:#fff}
+.q-section.green,.q-section.amber,.q-section.pink{color:var(--accent)}
+.tech-card.selected.green,.tech-card.selected.amber,.tech-card.selected.pink{border-color:var(--accent);background:var(--accent-light)}
+.btn-next.green,.btn-next.amber,.btn-next.pink{background:var(--accent)}
+.btn-next.green:hover,.btn-next.amber:hover,.btn-next.pink:hover{background:var(--accent-mid)}
+.out-hero.green,.out-hero.amber,.out-hero.pink{background:linear-gradient(135deg, var(--accent), var(--accent-mid)); color: #fff; border: none}
+.out-sec-icon.green,.out-sec-icon.amber,.out-sec-icon.pink{background:var(--accent-light);color:var(--accent);border-color:var(--border)}
+
+/* ── Website / Theme mode (formerly pink) ── */
+.badge-website{background:var(--accent-light);color:var(--accent);border:1px solid var(--border)}
+.mode-card.active.pink-mode{border-color:var(--accent);background:var(--accent-light)}
+.mode-card.active.pink-mode .mode-check{color:#fff;background:var(--accent);border-color:var(--accent)}
+.progress-fill.pink{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.crumb.done.pink{border-color:var(--accent);color:var(--accent)}
+.crumb.active.pink{background:var(--accent);color:#fff;box-shadow:0 0 10px var(--accent)}
+.q-section.pink{color:var(--accent)}
+.tech-card.selected.pink{border-color:var(--accent);background:var(--accent-light)}
+.tech-card.selected.pink .tc-check{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.sel.pink{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.scale-card.selected.pink{border-color:var(--accent);background:var(--accent-light)}
+.btn-next.pink{background:var(--accent)}
+.btn-next.pink:hover{background:var(--accent-mid);box-shadow:0 0 15px var(--accent-light)}
+.btn-generate.pink{background:var(--accent);box-shadow:0 4px 20px var(--accent-light)}
+.btn-generate.pink:hover{box-shadow:0 8px 28px var(--accent-mid)}
+.rec-badge.pink{background:var(--accent-light);color:var(--accent);border:1px solid var(--border)}
+.phase-num.pink{background:var(--accent-light);color:var(--accent)}
+.phase-tag.pink{background:var(--accent-light);color:var(--accent)}
+.out-hero.pink{background:linear-gradient(135deg,var(--accent),var(--accent-mid))}
+.out-sec-icon.pink{background:var(--accent-light)}
 
 /* ── Level toggle ── */
 .level-toggle{display:flex;align-items:center;gap:6px;margin-bottom:16px;justify-content:center;animation:fadeUp .5s .18s ease both}
 .level-label{font-size:12px;font-weight:700;color:var(--text2);margin-right:4px}
 .level-btn{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);
-  font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .15s;color:var(--text2)}
-.level-btn:hover{border-color:var(--border2);color:var(--text)}
-.level-btn.active{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+  font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;
+  transition:border-color 0.2s, background 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
+  color:var(--text2);outline:none;user-select:none}
+.level-btn:hover{border-color:var(--border2);color:var(--text);transform:translateY(-1px)}
+.level-btn.active{
+  border-color:var(--accent);background:var(--accent);color:#fff;
+  box-shadow:0 4px 12px var(--accent-light);
+  transform:translateY(-2px) scale(1.04)}
 
 /* ── Quick start ── */
 .quick-start-section{margin-top:40px;animation:fadeUp .5s .35s ease both}
@@ -338,8 +408,7 @@ pre{padding:16px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-h
 .qs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
 .qs-card{border:1px solid var(--border);border-radius:4px;padding:20px 16px;text-align:center;
   cursor:pointer;background:rgba(255,255,255,0.02);backdrop-filter:blur(5px);transition:all .3s}
-.qs-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.2), inset 0 0 10px rgba(0,240,255,0.1);transform:translateY(-4px)}
-[data-theme='dark'] .qs-card:hover{box-shadow:0 8px 30px rgba(0,240,255,0.1), inset 0 0 15px rgba(0,240,255,0.2)}
+.qs-card:hover{border-color:var(--accent);box-shadow:0 8px 24px var(--accent-light);transform:translateY(-4px)}
 .qs-icon{font-size:32px;margin-bottom:12px}
 .qs-name{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}
 .qs-desc{font-size:12px;color:var(--text3);line-height:1.5;font-family:var(--mono)}
@@ -365,6 +434,7 @@ pre{padding:16px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-h
       <div class="logo-dot">⚡</div><span class="logo-text">DevForge v3</span>
     </div>
     <div class="nav-actions">
+      <button class="nav-btn" id="aiNavBtn" onclick="openAIPanel()">🤖 AI Settings</button>
       <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">🌙 Gelap</button>
       <button class="nav-btn" onclick="goHome()">🏠 Beranda</button>
     </div>
@@ -587,6 +657,34 @@ payment: [
    ideal:'<strong>Paling cocok untuk:</strong> POS/kiosk, toko fisik, app dengan volume transaksi tinggi'},
 ],
 
+animation: [
+  {val:'framer-motion', icon:'✨', name:'Framer Motion', tagline:'Standar animasi untuk React', rec:'best', recLabel:'⭐ Terbaik React', pros:['Sangat mudah digunakan di React','Animasi gesekan (spring physics) mulus'], cons:['Hanya untuk React','Menambah sedikit ukuran *bundle*'], ideal:'<strong>Cocok untuk:</strong> Hampir semua web app modern berbasis React'},
+  {val:'gsap', icon:'🟢', name:'GSAP', tagline:'Library animasi paling sakti di web', rec:'adv', recLabel:'⚡ Profesional', pros:['Performa luar biasa cepat','Bisa menganimasikan scroll (ScrollTrigger) dengan magis'], cons:['Berbayar untuk penggunaan komersil tertentu','Kurva belajar cukup lumayan'], ideal:'<strong>Cocok untuk:</strong> Website pemenang penghargaan, landing page ultra-interaktif'},
+  {val:'threejs', icon:'🧊', name:'Three.js / R3F', tagline:'Dunia 3D di dalam browser', rec:'adv', recLabel:'⚡ 3D Graphics', pros:['Membuat grafis 3D (WebGL) yang menakjubkan','Bisa render model 3D (GLTF/GLB)'], cons:['Sangat sulit dipelajari (butuh pemahaman matematika ruang)','Bikin laptop panas jika tidak optimal'], ideal:'<strong>Cocok untuk:</strong> Web game, metaverse, showroom produk interaktif 3D'},
+  {val:'lottie', icon:'🎥', name:'Lottie', tagline:'*Export* animasi After Effects ke JSON', rec:'good', recLabel:'✓ Termudah', pros:['Animasi 100% dibuat oleh desainer profesional','File JSON sangat kecil dibanding GIF/Video'], cons:['Sulit dikontrol secara interaktif (hanya play/pause)'], ideal:'<strong>Cocok untuk:</strong> Animasi loading, pesan sukses, ilustrasi onboarding'},
+  {val:'tauri-spring', icon:'🖥️', name:'Desktop Native UI', tagline:'Animasi native OS', rec:'good', recLabel:'✓ Desktop App', pros:['Memanfaatkan donasi hardware GPU desktop maksimum','Sangat responsif'], cons:['Lebih kaku dibanding web animation tools'], ideal:'<strong>Cocok untuk:</strong> Aplikasi desktop internal'}
+],
+
+webBuilder: [
+  {val:'astro', icon:'🚀', name:'Astro + Tailwind', tagline:'Raja performa untuk website modern', rec:'best', recLabel:'⭐ Terbaik Pro', pros:['Performa tercepat dengan 0 JavaScript secara default','Bisa digabung dengan komponen React/Vue interaktif','Sangat diunggulkan oleh mesin pencari (SEO)'], cons:['Harus dirakit dengan koding murni','Butuh layanan Headless CMS terpisah untuk artikel/katalog'], ideal:'<strong>Cocok untuk:</strong> Landing page B2B, profil perusahaan top tier'},
+  {val:'nextjs-static', icon:'▲', name:'Next.js (SSG)', tagline:'Standar industri tech startup', rec:'good', recLabel:'✓ Scalable', pros:['Tumbuh tanpa batas (bisa diexpansi jadi app berat nantinya)','Mendukung ratusan ribu halaman statis otomatis'], cons:['Muatan kode dasarnya (bundle JS) sedikit lebih berat dari Astro'], ideal:'<strong>Cocok untuk:</strong> Website perusahaan besar, portal media'},
+  {val:'webflow', icon:'🎨', name:'Webflow', tagline:'Visual builder kelas premium', rec:'good', recLabel:'✓ No-Code', pros:['Tidak perlu koding sama sekali (No-code 100%)','Membuat animasi scroll sangat visual & intuitif','Sudah merangkap CMS dan tempat hosting'], cons:['Berbayar bulanan (Vendor Lock-in)','Bukan untuk developer yang suka kontrol kode penuh'], ideal:'<strong>Cocok untuk:</strong> Startup dengan budget marketing mantap, tim desainer UI/UX'},
+  {val:'wordpress', icon:'W', name:'WordPress', tagline:'Sistem di balik 40% website dunia', rec:'good', recLabel:'✓ Klasik & Fleksibel', pros:['Jutaan tema siap pasang dan plugin gratis','Klien awam sudah paham cara kerjanya','Tutorial berlimpah'], cons:['Lambat jika ditumpuk berbagai macam plugin','Rawan retas jika jarang dipelihara (*update*)'], ideal:'<strong>Cocok untuk:</strong> Blog personal, portal berita, web UMKM lokal'},
+  {val:'html', icon:'📄', name:'HTML / CSS Murni', tagline:'Pendekatan murni super ringan', rec:'good', recLabel:'✓ Teringan', pros:['Tanpa instalasi apapun','Bisa ditaruh di sembarang server dan hidup selamanya'], cons:['Mimpi buruk jika harus mengubah *header* di 20 halaman berbeda (karena tak ada sistem komponen)'], ideal:'<strong>Cocok untuk:</strong> Landing page sesaat atau satu lembar promosi event'}
+],
+
+cms: [
+  {val:'markdown', icon:'📝', name:'Markdown (Folder lokal)', tagline:'Konten sebatas teks di dalam proyek', rec:'best', recLabel:'⭐ Termudah Dev', pros:['100% Gratis dan menyatu dengan proyek kode','Jaminan performa absolut tanpa antri database'], cons:['Pemilik bisnis/penulis yang non-koder akan kesulitan mengedit'], ideal:'<strong>Cocok untuk:</strong> Blog engineer independen, dokumentasi teknis'},
+  {val:'sanity', icon:'🔴', name:'Sanity (Headless CMS)', tagline:'Studio editing fleksibel berbasis API', rec:'best', recLabel:'⭐ Terbaik Klien', pros:['Pengedit konten bisa bekerja nyaman tanpa merusak kodingan Anda','Fasilitas kolaborasi langsung (*real-time*)','Paket gratis (Free-tier) yang sangat murah hati'], cons:['Front-end harus dirakit manual menggunakan Astro atau Next.js'], ideal:'<strong>Cocok untuk:</strong> Proyek dari agensi dengan banyak artikel, katalog produk statis terstruktur'},
+  {val:'strapi', icon:'🍄', name:'Strapi', tagline:'API generator & CMS buatan sendiri', rec:'good', recLabel:'✓ Open Source', pros:['Gratis seluruhnya (Tarik kode dan jalankan di server Anda)','Menyuapi API ke platform apa pun (Aplikasi HP atau Web)'], cons:['Memerlukan keahlian administrasi *server* mandiri'], ideal:'<strong>Cocok untuk:</strong> Proyek rahasia perusahan/Instansi yang harus berjalan dalam server internal'},
+  {val:'wordpress-headless', icon:'W', name:'Headless WP', tagline:'Gunakan WP hanya sebagai panel pengetikan', rec:'good', recLabel:'✓ Masa Transisi', pros:['Klien tetap menggunakan panel WP usang yang mereka kuasai','Tapi kecepatan *website*-nya seganas Astro modern!'], cons:['Konfigurasi integrasinya bisa terasa canggung karena tumpukan teknis berlapis'], ideal:'<strong>Cocok untuk:</strong> Proyek restorasi web jadul tanpa menyiksa admin webnya'}
+],
+
+form: [
+  {val:'formspree', icon:'✉️', name:'Formspree', tagline:'Endpoint tanpa server siap pakai', rec:'best', recLabel:'⭐ Auto Email', pros:['Hanya siapkan kodingan form HTML, lempar formulirnya ke email Anda','Gratis dengan kapasitas mencukupi'], cons:['Di varian gratis, akan dialihkan ke halaman milik Formspree sesaat setelah *submit*'], ideal:'<strong>Cocok untuk:</strong> Formulir kontak/Buku tamu sederhana'},
+  {val:'google-form', icon:'📊', name:'Google Forms Embed', tagline:'Form gratis terandal di bumi', rec:'good', recLabel:'✓ Gratis Selamanya', pros:['Data pengunjung dijamin tak akan hilang (masuk *spreadsheet*)'], cons:['Tampilan kaku khas Google, merusak estetika desain web Anda'], ideal:'<strong>Cocok untuk:</strong> Formulir registrasi pendaftaran panjang dan berbelit'}
+],
+
 uiLib: [
   {val:'tailwind-shadcn', icon:'🎨', name:'Tailwind + shadcn/ui', tagline:'Kombinasi terpopuler untuk UI modern',
    rec:'best', recLabel:'⭐ Terbaik',
@@ -764,195 +862,206 @@ agentTools: [
 // ═══════════════════════════════════════════
 // STEP DEFINITIONS
 // ═══════════════════════════════════════════
+const WEBSITE_STEPS = [
+  {key:'projectName', title:'Ceritakan nama & tujuan website', type:'text', desc:'Tuliskan sekilas web seperti apa yang ingin dibuat.', placeholder:'Contoh: "Landing page penjualan kursus online"'},
+  {key:'webType', title:'Pilih tipe website', type:'scale', desc:'Struktur yang paling cocok dengan kebutuhan:', options:[
+    {val:'corporate',icon:'🏛️',name:'Full Portal / Corporate',desc:'Website berskala besar yang konten mutlaknya dikendalikan via panel CMS'},
+    {val:'landing',icon:'🎯',name:'Landing Page',desc:'Satu halaman panjang fokus konversi/marketing'},
+    {val:'profile',icon:'🏢',name:'Company Profile',desc:'Beberapa halaman statis (Tentang Kami, Kontak, Layanan)'},
+    {val:'blog',icon:'📝',name:'Blog / Media',desc:'Website berbasis konten artikel yang sering update'},
+    {val:'portfolio',icon:'🎨',name:'Portfolio',desc:'Menampilkan karya dan resume personal'},
+    {val:'docs',icon:'📚',name:'Documentation',desc:'Panduan/wiki atau dokumentasi teknis'}
+  ]},
+  {key:'webBuilder', title:'Platform / Web Builder', type:'techcard', desc:'Alat yang tepat untuk membangun website.', techKey:'webBuilder', multi:false},
+  {key:'cms', title:'Manajemen Konten (CMS)', type:'techcard', desc:'Bagaimana kamu akan memperbarui teks/gambar?', techKey:'cms', multi:false},
+  {key:'animation', title:'🎬 Animasi & Media (Opsional)', type:'techcard', desc:'Elevasi desain web dengan animasi halus.', techKey:'animation', multi:true, max:2},
+  {key:'form', title:'Integrasi Form (Opsional)', type:'techcard', desc:'Kumpulkan email/kontak tanpa membuat backend sendiri.', techKey:'form', multi:true, max:1},
+  {key:'deployment', title:'Hosting', type:'techcard', desc:'Di mana website akan ditempatkan?', techKey:'deployment', multi:true, max:2},
+  {key:'outputPref', title:'Apa yang mau dihasilkan?', type:'scale', options:[
+    {val:'all',icon:'✨',name:'Semua Lengkap (Masterplan)',desc:'Struktur, PRD, dan Prompt khusus IDE AI'},
+    {val:'structure',icon:'📁',name:'Struktur Folder',desc:'Hanya pohon direktori'},
+    {val:'prd',icon:'📝',name:'PRD Saja',desc:'Dokumen rencana produk'},
+    {val:'prompts',icon:'💬',name:'Prompt Saja',desc:'Hanya instruksi AI'}
+  ]}
+];
+
 const SDLC_STEPS = [
-  {key:'projectName', section:'Langkah 1', title:'Ceritakan project kamu', type:'text',
-   desc:'Tuliskan nama dan deskripsi singkat apa yang ingin kamu bangun. Tidak harus teknis — cukup jelaskan masalah yang dipecahkan.',
-   placeholder:'Contoh: "TanamBerhasil — aplikasi untuk petani agar bisa catat hasil panen, harga pasar, dan dapat tips berkebun dari AI"'},
-  {key:'appType', section:'Langkah 2', title:'Ini jenis aplikasi apa?', type:'scale',
-   desc:'Pilih yang paling sesuai dengan bayangan kamu.',
-   options:[
-     {val:'webapp',icon:'🌐',name:'Web App',desc:'Dibuka di browser — laptop/HP. Contoh: Tokopedia, Notion, Google Docs'},
-     {val:'mobile',icon:'📱',name:'Mobile App',desc:'Aplikasi Android/iOS yang diinstall. Contoh: GoJek, Instagram'},
-     {val:'api',icon:'🔌',name:'API / Backend',desc:'Layanan di belakang layar yang melayani app lain. Contoh: payment gateway, data service'},
-     {val:'fullstack',icon:'🏗️',name:'Fullstack (Web + API)',desc:'Web app lengkap dengan database dan API sendiri'},
-   ]},
-  {key:'audience', section:'Langkah 3', title:'Siapa yang akan pakai?', type:'scale',
-   desc:'Ini menentukan tingkat kompleksitas fitur auth, keamanan, dan UX yang dibutuhkan.',
-   options:[
-     {val:'b2c',icon:'👥',name:'Pengguna umum (B2C)',desc:'Siapapun bisa daftar dan pakai. Contoh: media sosial, marketplace'},
-     {val:'b2b',icon:'🏢',name:'Perusahaan / bisnis (B2B)',desc:'Klien bisnis yang bayar. Butuh invoice, multi-user, permission'},
-     {val:'internal',icon:'🔧',name:'Tim internal saja',desc:'Hanya dipakai karyawan/tim kamu. Dashboard, tools operasional'},
-     {val:'public',icon:'🌍',name:'Publik terbuka',desc:'Website informasi, blog, portfolio — bisa dilihat semua orang'},
-   ]},
-  {key:'frontend', section:'Langkah 4', title:'Tampilan app — pakai apa?', type:'techcard',
-   desc:'Ini seperti memilih "mesin" untuk membuat tampilan yang dilihat pengguna. Klik "Lihat detail" untuk perbandingan.',
-   techKey:'frontend', multi:true, max:2},
-  {key:'backend', section:'Langkah 5', title:'Server & logika bisnis — pakai apa?', type:'techcard',
-   desc:'Bagian yang berjalan di server — memproses data, menjalankan aturan bisnis, dan menghubungkan database.',
-   techKey:'backend', multi:true, max:2},
-  {key:'database', section:'Langkah 6', title:'Di mana data disimpan?', type:'techcard',
-   desc:'Database adalah "gudang data" aplikasi kamu. Pilih yang sesuai dengan jenis dan skala data.',
-   techKey:'database', multi:true, max:2},
-  {key:'uiLib', section:'Langkah 7', title:'Komponen UI & gaya tampilan', type:'techcard',
-   desc:'Library komponen siap pakai — tombol, form, tabel, dll. Pilih sesuai selera dan kebutuhan.',
-   techKey:'uiLib', multi:true, max:3},
-  {key:'auth', section:'Langkah 8', title:'Sistem login & keamanan', type:'techcard',
-   desc:'Bagaimana pengguna masuk ke aplikasi kamu? Dan bagaimana data mereka diamankan?',
-   techKey:'auth', multi:true, max:2},
-  {key:'payment', section:'Langkah 9', title:'💳 Sistem pembayaran (opsional)', type:'techcard',
-   desc:'Kalau app kamu butuh fitur pembayaran (e-commerce, SaaS, subscription), pilih di sini. Lewati jika tidak perlu.',
-   techKey:'payment', multi:true, max:2},
-  {key:'deployment', section:'Langkah 10', title:'Di mana app di-hosting?', type:'techcard',
-   desc:'Ini adalah "tanah" tempat aplikasi kamu hidup dan bisa diakses pengguna.',
-   techKey:'deployment', multi:true, max:3},
-  {key:'scale', section:'Langkah 11', title:'Skala & waktu pengerjaan', type:'scale',
-   desc:'Ini menentukan seberapa dalam arsitektur yang disarankan.',
-   options:[
-     {val:'mvp',icon:'🚀',name:'MVP — 2-4 minggu',desc:'Versi paling minimal yang bisa ditest ke pengguna nyata'},
-     {val:'small',icon:'📦',name:'App kecil — 1-2 bulan',desc:'Sudah cukup fitur untuk diluncurkan secara publik'},
-     {val:'medium',icon:'🏗️',name:'Produk menengah — 3-6 bulan',desc:'Produk lengkap dengan banyak fitur dan pengguna aktif'},
-     {val:'enterprise',icon:'🏰',name:'Enterprise — 6+ bulan',desc:'Sistem besar, multi-tenant, compliance ketat'},
-   ]},
-  {key:'outputPref', section:'Langkah 12', title:'Apa yang mau dihasilkan?', type:'multicheck',
-   desc:'Pilih output yang paling kamu butuhkan saat ini.',
-   options:[
-     {val:'structure',icon:'📁',label:'Struktur folder project'},
-     {val:'prd',icon:'📝',label:'PRD & Master Plan'},
-     {val:'prompts',icon:'💬',label:'Prompt untuk AI coding assistant'},
-     {val:'configs',icon:'⚙️',label:'File konfigurasi (package.json dll)'},
-   ]},
+  {key:'projectName', title:'Ceritakan project kamu', type:'text', desc:'Tuliskan nama dan deskripsi singkat apa yang ingin kamu bangun. Tidak harus teknis — cukup jelaskan masalah yang dipecahkan.', placeholder:'Contoh: "Sistem ERP Toko Buku Lokal"'},
+  {key:'appType', title:'Ini jenis aplikasi apa?', type:'scale', desc:'Pilih yang paling sesuai dengan bayangan kamu.', options:[
+    {val:'webapp',icon:'🌐',name:'Web App',desc:'Sistem web interaktif — laptop/HP. Contoh: Tokopedia, Notion'},
+    {val:'mobile',icon:'📱',name:'Mobile App',desc:'Aplikasi Android/iOS yang diinstall. Contoh: GoJek, Instagram'},
+    {val:'desktop',icon:'🖥️',name:'Desktop App',desc:'App Windows/Mac/Linux yang diinstall. Contoh: VSCode, Spotify'},
+    {val:'fullstack',icon:'🏗️',name:'Fullstack (Web + API)',desc:'Web app lengkap dengan database dan API sendiri'},
+    {val:'api',icon:'🔌',name:'API / Backend',desc:'Layanan di server untuk melayani app lain'}
+  ]},
+  {key:'desktopType', showIf: a=>a.appType==='desktop', title:'Jenis app desktop apa?', type:'scale', desc:'Pilih yang paling sesuai.', options:[
+    {val:'utility',icon:'🔧',name:'Utility/Tools',desc:'Aplikasi pendamping ringan'}, {val:'productivity',icon:'📊',name:'Productivity',desc:'Aplikasi produktivitas'}, {val:'pos',icon:'🏪',name:'POS/Kiosk',desc:'Aplikasi kasir atau anjungan'}, {val:'game',icon:'🎮',name:'Game/Interactive',desc:'Game atau aplikasi interaktif'}
+  ]},
+  {key:'audience', showIf: a=>a.appType!=='desktop', title:'Siapa yang akan pakai?', type:'scale', desc:'Ini menentukan tingkat keamanan, arsitektur data, dan UX.', options:[
+    {val:'b2c',icon:'👥',name:'Publik (B2C)',desc:'Bisa diakses siapa saja, butuh performa cepat'},
+    {val:'b2b',icon:'🏢',name:'Bisnis (B2B / SaaS)',desc:'Klien bisnis, butuh isolasi data, multi-user, & permission'},
+    {val:'internal',icon:'🔒',name:'Internal Tool / ERP',desc:'Sistem operasi perusahaan (ERP, HR, Keuangan, Inventory)'}
+  ]},
+  {key:'targetOS', showIf: a=>a.appType==='desktop', title:'Target platform?', type:'multicheck', options:[
+    {val:'windows',icon:'🪟',label:'Windows'}, {val:'macos',icon:'🍎',label:'macOS'}, {val:'linux',icon:'🐧',label:'Linux'}
+  ]},
+  {key:'frontend', showIf: a=>!['api','desktop'].includes(a.appType), title:'Tampilan — pakai apa?', type:'techcard', techKey:'frontend', multi:false},
+  {key:'desktopFramework', showIf: a=>a.appType==='desktop', title:'Framework desktop — pakai apa?', type:'techcard', techKey:'desktop', multi:false},
+  {key:'backend', showIf: a=>!['desktop'].includes(a.appType), title:'Server / Logika Backend', type:'techcard', techKey:'backend', multi:false},
+  {key:'database', title:'Di mana data disimpan?', type:'techcard', techKey:'database', multi:true, max:2},
+  {key:'uiLib', title:'Komponen UI & gaya tampilan', type:'techcard', techKey:'uiLib', multi:true, max:3},
+  {key:'animation', title:'🎬 Animasi & Media (Opsional)', type:'techcard', desc:'Tertarik pakai animasi gestur halus atau interaksi 3D nyata?', techKey:'animation', multi:true, max:2},
+  {key:'installer', showIf: a=>a.appType==='desktop', title:'Installer & distribusi', type:'techcard', techKey:'installer', multi:true, max:2},
+  {key:'auth', showIf: a=>!['desktop'].includes(a.appType), title:'Sistem login & keamanan', type:'techcard', techKey:'auth', multi:true, max:2},
+  {key:'payment', title:'💳 Sistem pembayaran (opsional)', type:'techcard', techKey:'payment', multi:true, max:2},
+  {key:'deployment', showIf: a=>a.appType!=='desktop', title:'Di mana app di-hosting?', type:'techcard', techKey:'deployment', multi:true, max:3},
+  {key:'scale', title:'Skala & waktu pengerjaan', type:'scale', options:[
+    {val:'mvp',icon:'🚀',name:'MVP — 2-4 minggu',desc:'Versi purwarupa operasional minimal'},
+    {val:'small',icon:'📦',name:'App Kecil — 1-2 bulan',desc:'Cukup fitur untuk peluncuran stabil'},
+    {val:'medium',icon:'🏗️',name:'Produk Menengah — 3-6 bulan',desc:'Produk lengkap bernilai jual dengan ribuan user'},
+    {val:'enterprise',icon:'🏰',name:'Enterprise / ERP — 6+ bulan',desc:'Sistem skala masif (ERP), audit trail ketat, multi-tenant'}
+  ]},
+  {key:'outputPref', title:'Apa yang mau dihasilkan?', type:'scale', options:[
+    {val:'all',icon:'✨',name:'Semua Lengkap (Masterplan)',desc:'Struktur, PRD, dan Prompt khusus IDE AI'},
+    {val:'structure',icon:'📁',name:'Struktur Folder',desc:'Hanya pohon direktori'},
+    {val:'prd',icon:'📝',name:'PRD Saja',desc:'Dokumen rencana produk'},
+    {val:'prompts',icon:'💬',name:'Prompt Saja',desc:'Hanya instruksi AI'},
+    {val:'configs',icon:'⚙️',name:'Konfigurasi',desc:'File konfigurasi system'}
+  ]}
 ];
 
 const ADLC_STEPS = [
-  {key:'agentName', section:'Langkah 1', title:'Misi agent AI kamu', type:'text',
-   desc:'Deskripsikan agent/sistem AI yang ingin dibangun. Ceritakan apa yang ingin dilakukan agent ini secara otomatis.',
-   placeholder:'Contoh: "SurveyBot — agent yang otomatis kumpulkan data survei dari Google Form, analisis hasilnya, dan buat laporan PDF mingguan"'},
-  {key:'agentType', section:'Langkah 2', title:'Jenis sistem AI ini apa?', type:'scale',
-   desc:'Pilih arsitektur yang paling mendekati kebutuhan kamu.',
-   options:[
-     {val:'single',icon:'🤖',name:'1 Agent + Tools',desc:'Satu AI yang bisa pakai berbagai tools. Paling simpel dan mudah di-debug'},
-     {val:'multi',icon:'👥',name:'Tim Agent (Multi-Agent)',desc:'Beberapa AI dengan role berbeda bekerja sama. Seperti tim manusia'},
-     {val:'rag',icon:'💬',name:'Chatbot + Knowledge Base',desc:'AI yang bisa jawab pertanyaan dari dokumen/data kamu sendiri'},
-     {val:'workflow',icon:'🔄',name:'Otomasi Workflow',desc:'AI yang jalankan proses berulang secara otomatis. Seperti robot kantor'},
-     {val:'coding',icon:'💻',name:'Coding Assistant',desc:'AI yang bantu tulis, review, dan debug kode secara otomatis'},
-     {val:'browser',icon:'🌐',name:'Web/Browser Agent',desc:'AI yang bisa "berselancar" internet, isi form, scrape data'},
-   ]},
-  {key:'llm', section:'Langkah 3', title:'Model AI yang dipakai', type:'techcard',
-   desc:'Ini adalah "otak" agent kamu. Setiap model punya kekuatan berbeda.',
-   techKey:'llm', multi:false},
-  {key:'orchestration', section:'Langkah 4', title:'Framework untuk mengatur agent', type:'techcard',
-   desc:'Seperti "manajer" yang mengatur bagaimana agent bekerja, mengambil keputusan, dan berinteraksi.',
-   techKey:'orchestration', multi:true, max:2},
-  {key:'memory', section:'Langkah 5', title:'Memori agent — ingat apa?', type:'techcard',
-   desc:'Seberapa jauh agent bisa "mengingat" informasi — dari percakapan tadi sampai database pengetahuan besar.',
-   techKey:'memory', multi:true, max:3},
-  {key:'agentTools', section:'Langkah 6', title:'Kemampuan & tools agent', type:'techcard',
-   desc:'Pilih apa saja yang bisa dilakukan agent ini. Setiap tool menambah kemampuan tapi juga kompleksitas.',
-   techKey:'agentTools', multi:true, max:5},
-  {key:'autonomy', section:'Langkah 7', title:'Seberapa mandiri agent bekerja?', type:'scale',
-   desc:'Ini tentang berapa banyak kontrol manusia yang tetap ada. Lebih mandiri = lebih powerful, tapi juga lebih berisiko.',
-   options:[
-     {val:'hitl',icon:'✋',name:'Konfirmasi setiap langkah',desc:'Agent usul, manusia approve. Paling aman, tapi butuh banyak perhatian'},
-     {val:'checkpoint',icon:'🔔',name:'Konfirmasi di titik penting',desc:'Agent jalan sendiri, tapi minta approval sebelum aksi besar'},
-     {val:'monitor',icon:'👁️',name:'Manusia hanya pantau',desc:'Agent jalan penuh, tapi ada dashboard monitoring dan bisa dihentikan'},
-     {val:'autonomous',icon:'🤖',name:'Sepenuhnya otomatis',desc:'Agent jalan sendiri 24/7. Butuh system monitoring yang matang'},
-   ]},
-  {key:'deployment', section:'Langkah 8', title:'Di mana agent di-deploy?', type:'techcard',
-   desc:'Platform tempat agent kamu berjalan dan menerima request.',
-   techKey:'deployment', multi:true, max:2},
-  {key:'complexity', section:'Langkah 9', title:'Estimasi kompleksitas', type:'scale',
-   desc:'Ini menentukan seberapa detail arsitektur yang dihasilkan.',
-   options:[
-     {val:'poc',icon:'🌱',name:'Prototype — 1 minggu',desc:'Cukup untuk demo dan validasi ide'},
-     {val:'simple',icon:'🔧',name:'Agent sederhana — 2-4 minggu',desc:'Siap dipakai tim sendiri'},
-     {val:'production',icon:'⚙️',name:'Siap produksi — 1-2 bulan',desc:'Pengguna nyata dengan monitoring dan error handling'},
-     {val:'enterprise',icon:'🏭',name:'Enterprise — 3+ bulan',desc:'Skalabilitas tinggi, compliance, audit trail'},
-   ]},
-  {key:'outputPref', section:'Langkah 10', title:'Output yang diinginkan', type:'multicheck',
-   desc:'Pilih semua yang kamu butuhkan.',
-   options:[
-     {val:'structure',icon:'📁',label:'Struktur folder agent'},
-     {val:'prd',icon:'📝',label:'ADLC Master Plan'},
-     {val:'prompts',icon:'💬',label:'System prompt templates'},
-     {val:'code',icon:'🐍',label:'Starter code (Python)'},
-   ]},
-];
-
-// ═══════════════════════════════════════════
-// DESKTOP STEPS (Framework 02)
-// ═══════════════════════════════════════════
-const DESKTOP_STEPS = [
-  {key:'desktopName', section:'Langkah 1', title:'Ceritakan app desktop kamu', type:'text',
-   desc:'Tuliskan nama dan deskripsi singkat aplikasi desktop yang ingin dibangun.',
-   placeholder:'Contoh: "QuickNote — aplikasi catatan ringan yang bisa diakses dari system tray, sync ke cloud, dan bisa screenshot langsung"'},
-  {key:'desktopType', section:'Langkah 2', title:'Jenis app desktop apa?', type:'scale',
-   desc:'Pilih yang paling sesuai dengan app yang mau dibangun.',
-   options:[
-     {val:'utility',icon:'🔧',name:'Utility / Tools',desc:'App kecil yang membantu tugas sehari-hari. Contoh: screenshot tool, clipboard manager'},
-     {val:'productivity',icon:'📊',name:'Productivity / Office',desc:'App untuk kerja dan produktivitas. Contoh: text editor, project manager'},
-     {val:'creative',icon:'🎨',name:'Creative / Media',desc:'App untuk edit gambar, video, musik. Contoh: photo editor, audio recorder'},
-     {val:'pos',icon:'🏪',name:'POS / Kasir / Kiosk',desc:'Aplikasi point-of-sale, kasir toko, atau kiosk. Contoh: sistem kasir, display menu'},
-     {val:'dashboard',icon:'📈',name:'Dashboard / Monitor',desc:'App untuk monitoring data dan statistik. Contoh: server monitor, analytics viewer'},
-     {val:'game',icon:'🎮',name:'Game / Interactive',desc:'Game 2D/3D atau pengalaman interaktif. Contoh: puzzle game, educational app'},
-   ]},
-  {key:'targetOS', section:'Langkah 3', title:'Target platform?', type:'multicheck',
-   desc:'Pilih sistem operasi yang harus didukung app kamu.',
-   options:[
-     {val:'windows',icon:'🪟',label:'Windows'},
-     {val:'macos',icon:'🍎',label:'macOS'},
-     {val:'linux',icon:'🐧',label:'Linux'},
-   ]},
-  {key:'desktopFramework', section:'Langkah 4', title:'Framework desktop — pakai apa?', type:'techcard',
-   desc:'Ini adalah "mesin" untuk membangun app desktop kamu. Setiap pilihan punya trade-off berbeda.',
-   techKey:'desktop', multi:false},
-  {key:'database', section:'Langkah 5', title:'Di mana data disimpan?', type:'techcard',
-   desc:'Database untuk menyimpan data app. Desktop app sering pakai database lokal (SQLite) atau cloud.',
-   techKey:'database', multi:true, max:2},
-  {key:'uiLib', section:'Langkah 6', title:'Komponen UI & gaya tampilan', type:'techcard',
-   desc:'Library komponen siap pakai untuk tampilan app desktop kamu.',
-   techKey:'uiLib', multi:true, max:2},
-  {key:'installer', section:'Langkah 7', title:'Installer & distribusi', type:'techcard',
-   desc:'Bagaimana user menginstall app kamu? Pilih format installer dan metode update.',
-   techKey:'installer', multi:true, max:2},
-  {key:'payment', section:'Langkah 8', title:'💳 Sistem pembayaran (opsional)', type:'techcard',
-   desc:'Kalau app kamu butuh fitur pembayaran (POS, subscription, in-app purchase), pilih di sini. Skip jika tidak perlu.',
-   techKey:'payment', multi:true, max:2},
-  {key:'scale', section:'Langkah 9', title:'Skala & waktu pengerjaan', type:'scale',
-   desc:'Ini menentukan seberapa dalam arsitektur yang disarankan.',
-   options:[
-     {val:'mvp',icon:'🚀',name:'MVP — 2-4 minggu',desc:'Versi paling minimal yang bisa ditest'},
-     {val:'small',icon:'📦',name:'App kecil — 1-2 bulan',desc:'Sudah cukup fitur untuk dirilis'},
-     {val:'medium',icon:'🏗️',name:'Produk menengah — 3-6 bulan',desc:'Produk lengkap dengan banyak fitur'},
-     {val:'enterprise',icon:'🏰',name:'Enterprise — 6+ bulan',desc:'Sistem besar dengan compliance ketat'},
-   ]},
-  {key:'outputPref', section:'Langkah 10', title:'Apa yang mau dihasilkan?', type:'multicheck',
-   desc:'Pilih output yang paling kamu butuhkan saat ini.',
-   options:[
-     {val:'structure',icon:'📁',label:'Struktur folder project'},
-     {val:'prd',icon:'📝',label:'PRD & Master Plan'},
-     {val:'prompts',icon:'💬',label:'Prompt untuk AI coding assistant'},
-     {val:'configs',icon:'⚙️',label:'File konfigurasi (package.json dll)'},
-   ]},
+  {key:'agentName', title:'Misi agent AI kamu', type:'text', desc:'Deskripsikan agent/sistem AI...', placeholder:'Contoh: "SurveyBot untuk kumpulkan data Google Form"'},
+  {key:'agentType', title:'Jenis sistem AI ini apa?', type:'scale', options:[
+    {val:'single',icon:'🤖',name:'1 Agent + Tools',desc:'Satu AI sederhana'}, {val:'multi',icon:'👥',name:'Tim Agent',desc:'Beberapa AI berbeda peran (Multi-Agent)'}, {val:'rag',icon:'💬',name:'Chatbot + Knowledge Base',desc:'Q&A berdasarkan data dokumen mandiri'}, {val:'workflow',icon:'🔄',name:'Otomasi Workflow',desc:'Proses rantai panjang'}, {val:'coding',icon:'💻',name:'Coding Assistant',desc:'Asisten penulisan & analisis logika'}, {val:'browser',icon:'🌐',name:'Browser Agent',desc:'Navigasi web otomatis'}
+  ]},
+  {key:'llm', title:'Model AI yang dipakai', type:'techcard', techKey:'llm', multi:false},
+  {key:'orchestration', title:'Framework untuk mengatur agent', type:'techcard', techKey:'orchestration', multi:true, max:2},
+  {key:'memory', title:'Memori agent', type:'techcard', techKey:'memory', multi:true, max:3},
+  {key:'agentTools', title:'Kemampuan & tools agent', type:'techcard', techKey:'agentTools', multi:true, max:5},
+  {key:'autonomy', title:'Seberapa mandiri agent bekerja?', type:'scale', options:[
+    {val:'hitl',icon:'✋',name:'Konfirmasi tiap langkah'}, {val:'checkpoint',icon:'🔔',name:'Konfirmasi titik kritis'}, {val:'monitor',icon:'👁️',name:'Dipantau pasif'}, {val:'autonomous',icon:'🤖',name:'100% Otomatis'}
+  ]},
+  {key:'deployment', title:'Di mana agent di-deploy?', type:'techcard', techKey:'deployment', multi:true, max:2},
+  {key:'complexity', title:'Skala pengembangan', type:'scale', options:[
+    {val:'poc',icon:'🌱',name:'POC (1 mgg)'}, {val:'simple',icon:'🔧',name:'Sederhana (2-4 mgg)'}, {val:'production',icon:'⚙️',name:'Produksi'}, {val:'enterprise',icon:'🏭',name:'Enterprise'}
+  ]},
+  {key:'outputPref', title:'Output', type:'scale', options:[
+    {val:'all',icon:'✨',name:'Semua Lengkap (Masterplan)',desc:'Struktur, ADLC Plan, Prompt, dan Starter Code'},
+    {val:'structure',icon:'📁',name:'Struktur Folder',desc:'Hanya pohon direktori'},
+    {val:'prd',icon:'📝',name:'PRD Saja',desc:'Dokumen rencana produk'},
+    {val:'prompts',icon:'💬',name:'Prompt Saja',desc:'Hanya instruksi AI'},
+    {val:'code',icon:'🐍',name:'Starter code',desc:'Pre-written Python code'}
+  ]}
 ];
 
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
-const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner'};
+const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner',
+  aiConfig: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
+  })()
+};
+// Defaults for aiConfig
+S.aiConfig = Object.assign({provider:'sumopod', model:'seed-2-0-lite-free', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
+
+// ═══════════════════════════════════════════
+// AI PROVIDER DATA
+// ═══════════════════════════════════════════
+const AI_PROVIDERS = {
+  sumopod: {
+    name: 'SumoPod',
+    baseUrl: 'https://api-gate-v2.sumopod.com/v1',
+    keyPlaceholder: 'sp-xxxxxxxxxxxxxxxxxxxxxxxx',
+    docsUrl: 'https://sumopod.com/dashboard/ai/quickstart',
+    models: [
+      {id:'seed-2-0-lite-free',  label:'Seed 2.0 Lite (GRATIS)',     provider:'byteplus', free:true},
+      {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:true},
+      {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
+      {id:'seed-2-0-mini-free',  label:'Seed 2.0 Mini (GRATIS)',      provider:'byteplus', free:true},
+      {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:false},
+      {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
+      {id:'seed-2-0-pro-free',   label:'Seed 2.0 Pro (GRATIS)',       provider:'byteplus', free:true},
+      {id:'deepseek-v3-2',       label:'DeepSeek V3.2',               provider:'byteplus', free:false},
+      {id:'deepseek-r1',         label:'DeepSeek R1 (Thinking)',      provider:'byteplus', free:false},
+      {id:'kimi-k2',             label:'Kimi K2',                     provider:'byteplus', free:false},
+      {id:'kimi-k2-thinking',    label:'Kimi K2 Thinking',            provider:'byteplus', free:false},
+      {id:'glm-4-7',             label:'GLM-4-7',                     provider:'byteplus', free:false},
+      {id:'seed-1-8',            label:'Seed 1.8',                    provider:'byteplus', free:false},
+      {id:'gemini/gemini-2.0-flash',       label:'Gemini 2.0 Flash',          provider:'google',   free:false},
+      {id:'gemini/gemini-2.0-flash-lite',  label:'Gemini 2.0 Flash Lite',     provider:'google',   free:false},
+      {id:'gemini/gemini-2.5-flash',       label:'Gemini 2.5 Flash',          provider:'google',   free:false},
+      {id:'gemini/gemini-2.5-pro',         label:'Gemini 2.5 Pro',            provider:'google',   free:false},
+      {id:'gemini/gemini-3-flash-preview', label:'Gemini 3 Flash (Preview)',   provider:'google',   free:false},
+      {id:'claude-haiku-4-5',              label:'Claude Haiku 4.5',           provider:'anthropic',free:false},
+      {id:'gpt-4.1',             label:'GPT-4.1',                     provider:'openai',   free:false},
+      {id:'gpt-4.1-mini',        label:'GPT-4.1 Mini',                provider:'openai',   free:false},
+      {id:'gpt-4o',              label:'GPT-4o',                      provider:'openai',   free:false},
+      {id:'gpt-4o-mini',         label:'GPT-4o Mini',                 provider:'openai',   free:false},
+      {id:'gpt-5',               label:'GPT-5',                       provider:'openai',   free:false},
+      {id:'gpt-5-mini',          label:'GPT-5 Mini',                  provider:'openai',   free:false},
+      {id:'glm-5',               label:'GLM-5',                       provider:'z.ai',     free:false},
+      {id:'glm-5-code',          label:'GLM-5 Code',                  provider:'z.ai',     free:false},
+    ]
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    keyPlaceholder: 'sk-or-v1-xxxxxxxxxxxxxxxx',
+    docsUrl: 'https://openrouter.ai/keys',
+    models: [
+      {id:'google/gemini-2.0-flash-exp:free',            label:'Gemini 2.0 Flash (GRATIS)',      provider:'google',     free:true},
+      {id:'deepseek/deepseek-r1:free',                   label:'DeepSeek R1 (GRATIS)',            provider:'deepseek',   free:true},
+      {id:'meta-llama/llama-3.3-70b-instruct:free',      label:'Llama 3.3 70B (GRATIS)',         provider:'meta',       free:true},
+      {id:'qwen/qwen-2.5-coder-32b-instruct:free',       label:'Qwen 2.5 Coder 32B (GRATIS)',   provider:'qwen',       free:true},
+      {id:'mistralai/mistral-nemo:free',                 label:'Mistral Nemo (GRATIS)',           provider:'mistral',    free:true},
+      {id:'anthropic/claude-3.5-sonnet',                 label:'Claude 3.5 Sonnet',              provider:'anthropic',  free:false},
+      {id:'anthropic/claude-3.7-sonnet',                 label:'Claude 3.7 Sonnet',              provider:'anthropic',  free:false},
+      {id:'openai/gpt-4o',                               label:'GPT-4o',                         provider:'openai',     free:false},
+      {id:'openai/gpt-4o-mini',                          label:'GPT-4o Mini',                    provider:'openai',     free:false},
+      {id:'google/gemini-2.5-pro-preview',               label:'Gemini 2.5 Pro Preview',         provider:'google',     free:false},
+      {id:'x-ai/grok-3-mini-beta',                       label:'Grok 3 Mini Beta',               provider:'xai',        free:false},
+      {id:'deepseek/deepseek-chat-v3-5',                 label:'DeepSeek V3.5',                  provider:'deepseek',   free:false},
+    ]
+  }
+};
 
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
 function slug(s){return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'project'}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function isWebsite(){return S.mode==='website'}
 function isGreen(){return S.mode==='adlc'}
-function isDesktop(){return S.mode==='desktop'}
-function isAmber(){return S.mode==='desktop'}
-function modeColorClass(){return isGreen()?'green':isAmber()?'amber':''}
-function modeLabel(){return isGreen()?'🤖 Agentic AI':isAmber()?'🖥️ Desktop App':'⚡ Software Build'}
+function isSdLC(){return S.mode==='sdlc'}
+function isAmber(){return isSdLC() && S.answers.appType==='desktop'}
+function modeColorClass(){return isGreen()?'green':isWebsite()?'pink':isAmber()?'amber':''}
+function modeLabel(){return isGreen()?'🤖 Agentic AI':isWebsite()?'🌍 Website':isAmber()?'🖥️ Desktop App':'⚡ Software Build'}
 function gc(base,green){return isGreen()?green:base}
 
-function setLevel(l){S.level=l;render()}
+function getActiveSteps(){
+  const all = isGreen() ? ADLC_STEPS : isWebsite() ? WEBSITE_STEPS : SDLC_STEPS;
+  return all.filter(s => !s.showIf || s.showIf(S.answers));
+}
+
+function setLevel(l){
+  S.level=l;
+  // Surgical update — only toggle .active on level buttons, no full page re-render
+  document.querySelectorAll('.level-btn').forEach(btn=>{
+    const isActive = btn.getAttribute('data-level')===l;
+    btn.classList.toggle('active', isActive);
+  });
+  // If currently inside wizard step, re-render just the question body (tech filters change)
+  if(S.mode && !S.generating && !S.generated){
+    const steps=getActiveSteps();
+    const q=steps[S.step];
+    if(q && q.type==='techcard'){
+      const body=document.getElementById('q-body');
+      if(body) body.innerHTML=renderQBody(q);
+    }
+  }
+}
 function quickStart(name){
   const T={
     'E-Commerce':{mode:'sdlc',answers:{projectName:'My E-Commerce Store',appType:'fullstack',audience:'b2c',frontend:['nextjs'],backend:['nextjs-api'],database:['supabase'],uiLib:['tailwind-shadcn'],auth:['supabase-auth'],payment:['midtrans'],deployment:['vercel'],scale:'small',outputPref:['structure','prd','prompts','configs']}},
@@ -989,32 +1098,32 @@ function render(){
 function renderModeSelect(){
   R.innerHTML=`
   <div class="hero-sec">
-    <h1>Bikin <em>Software</em>, Desktop App<br>&amp; <em>Agentic AI</em></h1>
-    <p class="subtitle">Framework generator lengkap untuk developer pemula hingga mahir — web app, desktop app, mobile, dan agentic AI dengan sistem pembayaran.</p>
+    <h1>Bikin <em>Website</em>, Desktop App<br>&amp; <em>Agentic AI</em></h1>
+    <p class="subtitle">Framework generator lengkap untuk developer pemula hingga mahir — website, web app, desktop app, mobile, dan agentic AI cerdas.</p>
   </div>
   <div class="level-toggle">
     <span class="level-label">Level kamu:</span>
-    <button class="level-btn ${S.level==='beginner'?'active':''}" onclick="setLevel('beginner')">🌱 Pemula</button>
-    <button class="level-btn ${S.level==='intermediate'?'active':''}" onclick="setLevel('intermediate')">🔧 Menengah</button>
-    <button class="level-btn ${S.level==='expert'?'active':''}" onclick="setLevel('expert')">⚡ Mahir</button>
+    <button class="level-btn ${S.level==='beginner'?'active':''}" data-level="beginner" onclick="setLevel('beginner')">🌱 Pemula</button>
+    <button class="level-btn ${S.level==='intermediate'?'active':''}" data-level="intermediate" onclick="setLevel('intermediate')">🔧 Menengah</button>
+    <button class="level-btn ${S.level==='expert'?'active':''}" data-level="expert" onclick="setLevel('expert')">⚡ Mahir</button>
   </div>
-  <div class="mode-grid three-col">
-    <div class="mode-card ${S.mode==='sdlc'?'active':''}" onclick="selMode('sdlc')">
-      <span class="mode-badge badge-sdlc">Framework 01</span>
-      <h3>Bikin Software</h3>
-      <p>Web app, mobile, API, SaaS, e-commerce — termasuk sistem pembayaran.</p>
-      <div class="mode-check">${S.mode==='sdlc'?'✓':''}</div>
+  <div class="mode-grid">
+    <div class="mode-card ${S.mode==='website'?'active pink-mode':''}" onclick="selMode('website')">
+      <span class="mode-badge badge-website">Framework 01</span>
+      <h3>Bikin Website</h3>
+      <p>Landing page statis, profil perusahaan, blog, portfolio, web event — SEO optimized & ringan.</p>
+      <div class="mode-check pink">${S.mode==='website'?'✓':''}</div>
     </div>
-    <div class="mode-card ${S.mode==='desktop'?'active amber-mode':''}" onclick="selMode('desktop')">
-      <span class="mode-badge badge-desktop">Framework 02</span>
-      <h3>Bikin Desktop App</h3>
-      <p>App Windows/Mac/Linux yang diinstall — tools, POS, dashboard, game.</p>
-      <div class="mode-check">${S.mode==='desktop'?'✓':''}</div>
+    <div class="mode-card ${S.mode==='sdlc'?'active':''}" onclick="selMode('sdlc')">
+      <span class="mode-badge badge-sdlc">Framework 02</span>
+      <h3>Bikin Software</h3>
+      <p>Web app interaktif, mobile app, desktop, sistem ERP, SaaS, e-commerce — dengan backend & database.</p>
+      <div class="mode-check">${S.mode==='sdlc'?'✓':''}</div>
     </div>
     <div class="mode-card ${S.mode==='adlc'?'active green-mode':''}" onclick="selMode('adlc')">
       <span class="mode-badge badge-adlc">Framework 03</span>
       <h3>Bikin Agentic AI</h3>
-      <p>Agent AI, chatbot cerdas, workflow otomatis, RAG — AI yang bekerja sendiri.</p>
+      <p>Agent AI, chatbot cerdas, workflow otomatis, RAG — sistem AI otonom yang bekerja sendiri.</p>
       <div class="mode-check">${S.mode==='adlc'?'✓':''}</div>
     </div>
   </div>
@@ -1033,7 +1142,7 @@ function renderModeSelect(){
 function selMode(m){S.mode=m;S.step=0;S.answers={};render()}
 
 function renderWizard(){
-  const steps=isGreen()?ADLC_STEPS:isDesktop()?DESKTOP_STEPS:SDLC_STEPS;
+  const steps=getActiveSteps();
   const q=steps[S.step];
   const total=steps.length;
   const pct=Math.round((S.step/total)*100);
@@ -1043,13 +1152,13 @@ function renderWizard(){
   // progress crumbs (show 5 around current)
   const crumbs=steps.map((s,i)=>{
     let cls=i<S.step?`done ${gClass}`:i===S.step?`active ${gClass}`:'';
-    return `<span class="crumb ${cls}">${s.section.replace('Langkah ','')}</span>`;
+    return `<span class="crumb ${cls}">${s.title.substring(0,18)}...</span>`;
   }).join('');
 
   R.innerHTML=`
   <div class="progress-wrap">
     <div class="progress-top">
-      <span class="progress-label">${q.section}</span>
+      <span class="progress-label">Langkah ${S.step+1}</span>
       <span class="progress-count">${S.step+1}/${total}</span>
     </div>
     <div class="progress-track"><div class="progress-fill ${gClass}" style="width:${pct}%"></div></div>
@@ -1217,12 +1326,28 @@ function smartRecs(techKey, answers){
     if(audience==='b2c') recs['midtrans']='top';
     else recs['stripe']='top';
   }
+
+  // --- Website specific recs ---
+  if(techKey==='webBuilder'){
+    const wt = answers.webType||'';
+    if(wt==='landing'||wt==='blog') recs['astro']='top';
+    else if(wt==='profile'||wt==='docs') recs['nextjs-static']='top';
+    else recs['astro']='top';
+  }
+  if(techKey==='cms'){
+    const wt = answers.webType||'';
+    if(wt==='blog'||wt==='documentation') recs['markdown']='top';
+    else recs['sanity']='top';
+  }
+  if(techKey==='form') recs['formspree']='top';
+  if(techKey==='animation') recs['framer-motion']='top';
+
   return recs;
 }
 
 // ── Input handlers ──
-function setScale(k,v){S.answers[k]=v;render()}
-function setSingle(k,v){S.answers[k]=v;render()}
+function setScale(k,v){S.answers[k]=v;render();setTimeout(nextStep,350)}
+function setSingle(k,v){S.answers[k]=v;render();setTimeout(nextStep,350)}
 function toggleChip(k,v){
   let a=S.answers[k]||[];
   S.answers[k]=a.includes(v)?a.filter(x=>x!==v):[...a,v];
@@ -1235,7 +1360,7 @@ function toggleTech(k,v,max){
   render();
 }
 function nextStep(){
-  const steps=isGreen()?ADLC_STEPS:isDesktop()?DESKTOP_STEPS:SDLC_STEPS;
+  const steps=getActiveSteps();
   if(S.step<steps.length-1){S.step++;render();window.scrollTo(0,0)}
 }
 function prevStep(){if(S.step>0){S.step--;render();window.scrollTo(0,0)}}
@@ -1264,7 +1389,111 @@ function renderGenerating(){
 // ═══════════════════════════════════════════
 // OUTPUT BUILDER
 // ═══════════════════════════════════════════
-function buildOutput(){return isGreen()?buildADLC():isDesktop()?buildDesktop():buildSDLC()}
+function buildOutput(){return isWebsite()?buildWebsite():isGreen()?buildADLC():isAmber()?buildDesktop():buildSDLC()}
+
+function buildWebsite(){
+  const a=S.answers;
+  const name=a.projectName||'My Website';
+  const wb=a.webBuilder||'Astro';
+  const cms=a.cms||'Markdown';
+  const anim=(a.animation||[]).join(' + ')||'Framer Motion';
+  const form=(a.form||[]).join(' + ')||'Formspree';
+  const dep=(a.deployment||[]).join(' + ')||'Vercel';
+  const isAstro=(a.webBuilder||'').includes('astro');
+  const typeMap={corporate:'Full Portal / Corporate', landing:'Landing Page', profile:'Company Profile', blog:'Blog / Media', portfolio:'Portfolio', docs:'Documentation'};
+  
+  const structure=isAstro?`
+${slug(name)}/
+├── src/
+│   ├── components/         ← Komponen UI statis & interaktif (Astro/React/Vue)
+│   ├── layouts/            ← Layout kerangka utama (Base, Blog, Page)
+│   ├── pages/              ← Routing file-based otomatis (index.astro)
+│   ├── content/            ← Artikel Markdown/MDX (Koleksi Konfigurasi)
+│   ├── styles/             ← Global CSS & utility config
+│   └── lib/                ← Utilitas & helper fetch API CMS
+├── public/                 ← Assets statis mentah (gambar, file konfigurasi)
+├── astro.config.mjs        ← Konfigurasi & integrasi Astro
+├── tailwind.config.cjs     ← Konfigurasi desing system / warna
+└── package.json`:`
+${slug(name)}/
+├── src/                    ← Area pengerjaan utama kodingan UI
+├── public/                 ← Assets gambar favicon
+├── styles/                 ← Ekstraksi file CSS
+├── index.html
+├── .env.example            ← Rahasia integrasi CMS
+└── package.json`;
+
+  const stackRecs=[
+    {cat:'Web Builder',name:wb,why:'Mesin pembangun utama SEO & interface',star:'⭐'},
+    {cat:'Manajemen Konten',name:cms,why:'Tempat menyimpan dan mengedit artkel/data',star:'📝'},
+    {cat:'Animasi',name:anim,why:'Efek visual interaktif pemikat mata',star:'🎬'},
+    {cat:'Integrasi Form',name:form,why:'Pengumpulan lead/kontak email',star:'✉️'},
+    {cat:'Hosting Statis',name:dep,why:'Deploy global edge sangat cepat',star:'🚀'},
+  ];
+
+  const phases=[
+    {num:'01',title:'Desain & Rangka Dasar',tags:['Hari 1-3'],desc:'Bangun UI kerangka HTML/CSS. Konfigurasi grid dan responsivitas layar (Mobile-First).'},
+    {num:'02',title:'Integrasi CMS',tags:['Hari 4-6'],desc:`Koneksikan Web Framework dengan ${cms}. Tarik data postingan atau profil dari CMS masuk ke template halaman.`},
+    {num:'03',title:'Fungsi Ekstra',tags:['Hari 7'],desc:`Pasang formulir kotak surat dengan ${form} dan berikan taburan efek ${anim}.`},
+    {num:'04',title:'SEO & Optimasi',tags:['Hari 8-9'],desc:'Setting Google Analytics, OG Image untuk sosial media, dan sitemap generator. Kompres aset gambar (WebP).'},
+    {num:'05',title:'Peluncuran Publik',tags:['Hari 10'],desc:`Deploy final secara otomatis ke ${dep} dan *pointing* DNS / Domain.`},
+  ];
+
+  const prd=`# PRD Website — ${name}
+
+## Ringkasan Eksekutif
+**Nama Website:** ${name}
+**Tipe:** ${typeMap[a.webType]||'Landing Page'}
+**Tujuan Akses:** Pengunjung Publik
+**Stack Inti:** ${wb} terhubung dengan ${cms}
+
+---
+
+## Arsitektur Konten (Sitemap)
+- [ ] Beranda (Berisi narasi nilai jual utama)
+- [ ] Tentang Kami (Penjelasan profil atau perusahaan)
+- [ ] Fitur / Layanan (Apa yang ditawarkan)
+- [ ] Kontak (Form ${form})
+- [ ] Blog / Artikel (Oleh sistem CMS ${cms})
+
+---
+
+## Spesifikasi Teknis Standar
+1. **Kecepatan Tinggi (Core Web Vitals):** LCP (Load Terbesar) wajib di bawah 2 detik. JavaScript seminimal mungkin (Zero-JS bila memungkinkan).
+2. **SEO (Search Engine Optimization):** Mengandung tag meta valid, heading H1-H6 tersusun wajar, canonical URL siap.
+3. **Animasi Terukur:** Menggunakan ${anim} hanya saat scroll masuk pandangan agar performa browser tidak tersendat.
+`;
+
+  const prompts=`# Starter Prompts / Instruksi AI — Pembuatan Website
+
+## Prompt 1: Rangka Dasar Framework
+
+\`\`\`
+Saya mau mulai membuat proyek website: ${name}.
+Tipe: ${typeMap[a.webType]||'Landing Page'}.
+
+Tumpukan stack web:
+- Web Builder: ${wb}
+- Styling: Tailwind CSS
+- Tool Manajemen Konten: ${cms}
+- Form: ${form}
+- Animasi: ${anim}
+
+Buatkan saya:
+1. Instruksi inisialisasi di root terminal package.json.
+2. Setup integrasi tailwind config dan styling base.
+3. Arsitektur folder komponen dasar (Header, Footer, Hero, Layout).
+\`\`\`
+
+## Prompt 2: Penentuan Integrasi
+
+\`\`\`
+Setelah komponen dasar jalan, saya perlu membuat logika untuk mengambil ${typeMap[a.webType]||'Postingan'} menggunakan sistem: ${cms}.
+Buatkan barisan \`fetch()\` untuk menyerap data tersebut dan masukkan ke dalam halaman list. Lengkapi juga script setup integrasi form pada ${form}.
+\`\`\``;
+
+  return {name,mode:'website',structure,stackRecs,phases,prd,prompts,fe:wb,db:cms,scale:'Proses Cepat'};
+}
 
 function buildSDLC(){
   const a=S.answers;
@@ -2135,17 +2364,18 @@ function renderOutput(){
   const g=S.generated;
   const isA=g.mode==='adlc';
   const isD=g.mode==='desktop';
+  const isW=g.mode==='website';
   const tabs=isA?['structure','code','plan','prompts']:['structure','stack','prd','prompts'];
   const labels=isA?['Struktur Folder','Starter Code','Master Plan','System Prompts']:['Struktur Folder','Tech Stack','PRD','AI Prompts'];
   const at=S.activeTab||tabs[0];
-  const gClass=isA?'green':isD?'amber':'';
+  const gClass=isA?'green':isW?'pink':isD?'amber':'';
 
   const heroMeta=isA
     ?[g.llm||'Claude',g.orch,g.complexity]
     :isD?[g.fw,g.db,g.targetOS,g.scale]
     :[g.fe,g.db,g.scale];
 
-  const heroLabel=isA?'Agentic AI — Generated':isD?'Desktop App — Generated':'Software — Generated';
+  const heroLabel=isA?'Agentic AI — Generated':isW?'Website — Generated':isD?'Desktop App — Generated':'Software — Generated';
 
   let panel='';
   if(at==='structure'){
@@ -2159,8 +2389,8 @@ function renderOutput(){
         <pre id="sc1">${esc(g.structure.trim())}</pre></div>
     </div>`;
   } else if(at==='stack'&&!isA){
-    const phaseNumClass=isD?'amber':'';
-    const phaseTagClass=isD?'amber':'';
+    const phaseNumClass=isW?'pink':isD?'amber':'';
+    const phaseTagClass=isW?'pink':isD?'amber':'';
     panel=`<div class="out-section">
       <div class="out-sec-head"><div class="out-sec-icon ${gClass}">⚙️</div><div>
         <div class="out-sec-title">Rekomendasi Tech Stack</div>
@@ -2242,10 +2472,1283 @@ function renderOutput(){
     <div class="tab-nav">${tabs.map((t,i)=>`<button class="tab-nav-btn ${at===t?'active':''}" onclick="setTab('${t}')">${labels[i]}</button>`).join('')}</div>
     <div id="out-panel">${panel}</div>
     <div class="restart-row">
+      <button class="btn btn-next" style="margin-bottom:10px;width:100%;justify-content:center;display:flex" onclick="dlProjectBundle()">📦 Download Project Bundle (masterplan + semua fase)</button>
+      <button class="btn btn-back" style="margin-bottom:15px;width:100%;justify-content:center;display:flex" onclick="dlMasterplan()">📄 Hanya masterplan.md</button>
       <button class="btn btn-restart" onclick="restart()">← Buat Project Baru</button>
     </div>
   </div>`;
 }
+
+function dlMasterplan() {
+  const g = S.generated;
+  if(!g) return;
+  const isA = g.mode === 'adlc';
+  const isW = g.mode === 'website';
+  const isD = g.mode === 'desktop';
+
+  let content = `# MASTERPLAN & AI INSTRUCTIONS: ${g.name.toUpperCase()}\n\n`;
+  content += `> File ini distandardisasi otomatis oleh DevForge Studio untuk AI Agentic.\n\n`;
+
+  // Context & Tech Stack
+  content += `## 1. CONTEXT & TECH STACK\n`;
+  if (isA) {
+    content += `- **Tujuan System**     : ${g.name}\n`;
+    content += `- **Tipe Agent**        : ${S.answers.agentType||'-'}\n`;
+    content += `- **Large Language Model**: ${g.llm||'-'}\n`;
+    content += `- **Orchestration**     : ${(g.orch||[]).join(' + ') || '-'}\n`;
+  } else if (isW) {
+    content += `- **Tipe Website**      : ${S.answers.webType||'-'}\n`;
+    content += `- **Web Builder**       : ${S.answers.webBuilder||'Astro'}\n`;
+    content += `- **CMS**               : ${S.answers.cms||'Markdown'}\n`;
+  } else if (isD) {
+    content += `- **Framework Desktop** : ${g.fw||'-'}\n`;
+    content += `- **Basis Database**    : ${(g.db||[]).join(' + ') || '-'}\n`;
+  } else {
+    content += `- **Frontend**          : ${g.fe||'-'}\n`;
+    content += `- **Database**          : ${(g.db||[]).join(' + ') || '-'}\n`;
+  }
+  content += `\n*(DILARANG bereksperimen dengan bahasa/framework lain di luar tumpukan ini tanpa izin tertulis!)*\n\n`;
+
+  // Blueprint / Folder Structure
+  content += `## 2. DIRECTORY BLUEPRINT\n`;
+  content += `\`\`\`text\n${g.structure.trim()}\n\`\`\`\n\n`;
+
+  // PRD / Master Plan
+  if (isA) {
+    content += `## 3. MASTER PLAN ADLC\n`;
+    content += `${g.masterPlan}\n\n`;
+    content += `## 4. STARTER CODE\n`;
+    content += `\`\`\`python\n${g.starterCode.trim()}\n\`\`\`\n\n`;
+    content += `## 5. PROMPT TEMPLATES\n`;
+    content += `${g.sysPrompts}\n\n`;
+  } else {
+    content += `## 3. PRODUCT REQUIREMENTS (PRD)\n`;
+    content += `${g.prd}\n\n`;
+    content += `## 4. EXECUTION PROMPTS\n`;
+    content += `${g.prompts}\n\n`;
+  }
+
+  // File Download Triggers
+  const blob = new Blob([content], {type: 'text/markdown'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'masterplan.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function dlProjectBundle() {
+  const g = S.generated;
+  if(!g || typeof JSZip === 'undefined'){
+    alert('JSZip belum termuat. Coba hard-refresh halaman (Shift+F5) dan pastikan koneksi internet aktif.');
+    return;
+  }
+  const isA = g.mode === 'adlc';
+  const isW = g.mode === 'website';
+  const isD = g.mode === 'desktop';
+  const a = S.answers;
+  const zip = new JSZip();
+  const folder = zip.folder(slug(g.name));
+
+  // ── Shared context vars ────────────────────────
+  const fe    = g.fe || (Array.isArray(a.frontend)?a.frontend[0]:a.frontend) || 'Next.js';
+  const db    = (Array.isArray(g.db)?g.db.join(' + '):g.db) || (Array.isArray(a.database)?a.database[0]:'Supabase');
+  const db0   = (Array.isArray(a.database)?a.database[0]:a.database) || 'supabase';
+  const auth  = (Array.isArray(a.auth)?a.auth[0]:a.auth) || 'supabase-auth';
+  const dep   = (Array.isArray(a.deployment)?a.deployment[0]:a.deployment) || 'vercel';
+  const ui    = (Array.isArray(a.uiLib)?a.uiLib[0]:a.uiLib) || 'tailwind-shadcn';
+  const scl   = a.scale || a.complexity || 'small';
+  const wb    = a.webBuilder || 'astro';
+  const cms   = a.cms || 'markdown';
+  const orch  = Array.isArray(g.orch)?g.orch.join('+'):(g.orch||'langchain');
+  const llm   = g.llm || a.llm || 'claude';
+  const desc  = a.projectName || g.name;
+
+  // ════════════════════════════════════════════
+  // 1. masterplan.md  — POWERFULL TEMPLATE
+  // ════════════════════════════════════════════
+  let mp = `# 📋 MASTERPLAN — ${g.name.toUpperCase()}
+Generated by DevForge Studio | ${new Date().toLocaleDateString('id-ID', {dateStyle:'long'})}
+
+> ⚠️ **INSTRUKSI PENTING UNTUK AI IDE (Cursor / Trae / Antigravity)**
+> Buka file ini PERTAMA KALI sebelum memulai pekerjaan apapun.
+> Baca seluruh file ini, konfirmasi pemahaman Anda dengan menjawab:
+> 1. Nama project dan tujuannya?
+> 2. Tech stack apa yang WAJIB digunakan?
+> 3. Struktur folder seperti apa yang diharapkan?
+
+---
+
+## 🎯 IDENTITAS PROJECT
+
+| Atribut | Value |
+|---------|-------|
+| **Nama** | ${g.name} |
+| **Deskripsi** | ${desc} |
+| **Mode** | ${isA?'Agentic AI System':isW?'Website / Landing Page':'Software Application'} |
+| **Skala** | ${scl} |
+| **Generated** | ${new Date().toISOString()} |
+
+---
+
+## ⚙️ TECH STACK — WAJIB DIIKUTI, JANGAN GANTI TANPA IZIN
+
+\`\`\`yaml
+${isA?`orchestration: ${orch}
+llm_model:     ${llm}
+agent_type:    ${a.agentType||'single'}
+memory:        ${(Array.isArray(a.memory)?a.memory.join(', '):(a.memory||'context'))}
+tools:         ${(Array.isArray(a.agentTools)?a.agentTools.join(', '):(a.agentTools||'web-search'))}
+deployment:    ${dep}
+`:isW?`web_builder:   ${wb}
+cms:           ${cms}
+animation:     ${(Array.isArray(a.animation)?a.animation.join(', '):(a.animation||'CSS'))}
+form:          ${(Array.isArray(a.form)?a.form.join(', '):(a.form||'Formspree'))}
+hosting:       ${dep}
+`:`frontend:      ${fe}
+database:      ${db}
+auth:          ${auth}
+ui_library:    ${ui}
+deployment:    ${dep}
+app_type:      ${a.appType||'webapp'}
+audience:      ${a.audience||'b2c'}
+`}\`\`\`
+
+---
+
+## 📁 STRUKTUR FOLDER
+
+\`\`\`text
+${g.structure.trim()}
+\`\`\`
+
+---
+
+## 🤝 RULES FOR AI — WAJIB DIPATUHI
+
+### 📌 SELALU LAKUKAN (DO):
+- Baca masterplan.md sebelum memulai setiap fase baru
+- Tulis komentar Bahasa Indonesia di setiap fungsi
+- Buat satu commit per fitur yang selesai (bukan per file)
+- Ikuti struktur folder di atas dengan ketat — jangan membuat folder baru tanpa diskusi
+- Validasi semua input dari user sebelum memproses
+- Gunakan TypeScript strict mode untuk semua file .ts/.tsx
+- Setiap async function WAJIB memiliki try-catch
+- Test manual setiap fitur sebelum lanjut ke berikutnya
+
+### 🚫 JANGAN LAKUKAN (DON'T):
+- Jangan install package yang tidak ada di rencana tanpa izin
+- Jangan ubah database schema tanpa membuat migration file
+- Jangan hardcode API key, password, atau secret apapun
+- Jangan skip error handling dengan alasan "nanti saja"
+- Jangan merge branch tanpa review minimal satu fase selesai
+- Jangan buat file di luar struktur folder yang sudah ditentukan
+- Jangan gunakan \`any\` type di TypeScript kecuali darurat
+- Jangan lanjut ke fase berikutnya sebelum checklist selesai
+
+---
+
+## 🌐 ENVIRONMENT VARIABLES
+
+Buat file \`.env.local\` (dan \`.env.example\` untuk repo):
+\`\`\`env
+${isA?`# LLM Provider
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+
+# Memory / Storage
+DATABASE_URL=
+REDIS_URL=
+
+# App Config
+AGENT_NAME=${g.name}
+LOG_LEVEL=INFO
+MAX_ITERATIONS=10
+TIMEOUT_SECONDS=30
+`:isW?`# CMS & Content
+CMS_API_URL=
+CMS_API_TOKEN=
+
+# Form
+FORM_ENDPOINT=
+
+# Analytics  
+GA_MEASUREMENT_ID=
+`:`# Database
+DATABASE_URL=
+${db0.includes('supabase')?`NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+`:''}
+# Auth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NODE_ENV=development
+`}\`\`\`
+
+---
+
+## 📊 DEFINISI ENTITAS UTAMA
+
+${isA?`### Agent State
+\`\`\`python
+class AgentState(TypedDict):
+    messages: list[BaseMessage]
+    task: str
+    iteration: int
+    results: list[dict]
+    error: Optional[str]
+    done: bool
+\`\`\`
+
+### Tool Interface
+\`\`\`python
+class BaseTool(ABC):
+    name: str
+    description: str
+
+    @abstractmethod
+    async def run(self, input: str) -> ToolResult:
+        pass
+\`\`\`
+`:isW?`### Konten Halaman
+| Halaman | Seksi | Data Source |
+|---------|-------|-------------|
+| Beranda | Hero, Features, Testimonial | ${cms} |
+| Tentang | Company Story, Team | ${cms} |
+| Layanan | Services List, Pricing | ${cms} |
+| Kontak | Form, Map | Form handler |
+
+### SEO Fields (wajib per halaman)
+- \`title\` (max 60 karakter)
+- \`description\` (max 160 karakter)
+- \`og:image\` (1200×630px)
+- \`canonical\` URL
+`:`### Entitas Utama (Core Entities)
+> Lengkapi sesuai domain bisnis project ini.
+> Contoh untuk e-commerce:
+
+| Entity | Fields | Relations |
+|--------|--------|-----------|
+| User | id, email, name, role, createdAt | has many Orders |
+| Product | id, name, price, stock, categoryId | belongs to Category |
+| Order | id, userId, total, status, createdAt | has many OrderItems |
+| OrderItem | id, orderId, productId, qty, price | belongs to Product |
+
+> ✏️ Minta AI untuk generate schema nyata berdasarkan deskripsi project: "${desc}"
+`}
+
+---
+
+## 🔒 KEAMANAN MINIMAL
+
+- [ ] Input sanitization di semua form/API
+- [ ] Rate limiting di semua endpoint publik
+- [ ] HTTPS only di production
+- [ ] Environment variables tidak pernah di-commit ke git
+- [ ] Dependencies di-audit dengan \`npm audit\` sebelum deploy
+${isA?'- [ ] Timeout pada setiap API call ke LLM\n- [ ] Validasi output LLM sebelum dieksekusi':''}
+
+---
+
+## 🚀 CARA MEMULAI DENGAN AI IDE
+
+\`\`\`
+INSTRUKSI AWAL untuk AI IDE:
+
+Saya sedang membangun project: ${g.name}
+
+Konteks project ada di file masterplan.md yang sudah terbuka.
+Kita akan membangun step by step mengikuti file phase_01.md sampai phase_0N.md.
+
+Mulai dengan membuka phase_01.md dan jalankan semua instruksi di dalamnya.
+Tanyakan konfirmasi sebelum melanjutkan ke fase berikutnya.
+\`\`\`
+`;
+  folder.file('masterplan.md', mp);
+
+  // ════════════════════════════════════════════
+  // 2. tech_notes.md — POWERFULL TEMPLATE
+  // ════════════════════════════════════════════
+  const tn = `# 🔧 TECH NOTES — ${g.name}
+> Panduan teknis mendalam yang WAJIB dibaca oleh AI IDE sebelum menulis kode.
+
+---
+
+## 📐 KONVENSI KODE
+
+| Aspek | Aturan | Contoh |
+|-------|--------|--------|
+| File name | kebab-case | \`user-profile.tsx\` |
+| Functions | camelCase | \`getUserById()\` |
+| Classes | PascalCase | \`UserRepository\` |
+| Constants | UPPER_SNAKE | \`MAX_RETRY_COUNT\` |
+| Types/Interfaces | PascalCase | \`UserResponse\` |
+| CSS classes | kebab-case | \`.user-card\` |
+| Database tables | snake_case | \`user_profiles\` |
+| Env variables | UPPER_SNAKE | \`DATABASE_URL\` |
+
+---
+
+## 🏗️ POLA ARSITEKTUR
+
+### Service Layer Pattern
+\`\`\`
+Request → Route Handler → Service → Repository → Database
+                ↓
+         Validation (Zod)
+                ↓
+         Response DTO
+\`\`\`
+
+### Error Handling Standard
+\`\`\`typescript
+// BENAR — gunakan pola ini
+async function fetchUser(id: string): Promise<User> {
+  try {
+    const user = await db.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundError(\`User \${id} tidak ditemukan\`);
+    return user;
+  } catch (error) {
+    logger.error({ error, userId: id }, 'fetchUser gagal');
+    throw error; // re-throw, jangan telan error
+  }
+}
+
+// SALAH — jangan lakukan ini
+async function fetchUser(id: string) {
+  return await db.user.findUnique({ where: { id } }); // ❌ no error handling
+}
+\`\`\`
+
+### Validasi Input (gunakan Zod)
+\`\`\`typescript
+const CreateUserSchema = z.object({
+  email: z.string().email('Email tidak valid'),
+  password: z.string().min(8, 'Password minimal 8 karakter'),
+  name: z.string().min(2).max(50),
+});
+
+// Di API route:
+const parsed = CreateUserSchema.safeParse(req.body);
+if (!parsed.success) return res.status(400).json({ errors: parsed.error.issues });
+\`\`\`
+
+---
+
+## 🚫 ANTI-PATTERNS — JANGAN LAKUKAN
+
+\`\`\`typescript
+// ❌ Hardcode secret
+const apiKey = "sk-12345abcde";
+
+// ✅ Gunakan env variable
+const apiKey = process.env.API_KEY!;
+if (!apiKey) throw new Error('API_KEY tidak diset');
+
+// ❌ Any type
+function process(data: any) { ... }
+
+// ✅ Typed properly
+function process(data: ProcessInput): ProcessOutput { ... }
+
+// ❌ Nested callback hell
+fetchUser(id, (user) => {
+  fetchOrders(user.id, (orders) => { ... });
+});
+
+// ✅ Async/await
+const user = await fetchUser(id);
+const orders = await fetchOrders(user.id);
+\`\`\`
+
+---
+
+## 🧪 TESTING STRATEGY
+
+| Level | Tool | Coverage Target |
+|-------|------|----------------|
+| Unit | Vitest / Jest | Service functions |
+| Integration | Supertest | API endpoints |
+| E2E | Playwright | Critical user flows |
+
+### Command Testing
+\`\`\`bash
+# Run semua test
+npm test
+
+# Watch mode  
+npm test -- --watch
+
+# Coverage report
+npm test -- --coverage
+\`\`\`
+
+---
+
+## 📦 DEPENDENCY POLICY
+
+- Audit sebelum install: \`npm audit\`
+- Cek bundle size: \`npx bundlephobia <package>\`
+- Prefer packages dengan:
+  - Weekly downloads > 100k
+  - Good TypeScript support
+  - Aktif maintenance (commit dalam 3 bulan terakhir)
+- Jangan install 2 package yang fungsinya sama
+
+---
+
+## ⚡ PERFORMANCE TARGETS
+
+${isW?`| Metric | Target |
+|--------|--------|
+| LCP (Largest Contentful Paint) | < 2.5s |
+| FID (First Input Delay) | < 100ms |
+| CLS (Cumulative Layout Shift) | < 0.1 |
+| Lighthouse Score | > 90 |
+| Image size | Max 200KB (WebP) |
+| JS bundle | < 100KB gzipped |
+`:isA?`| Metric | Target |
+|--------|--------|
+| Response time (P95) | < 3s |
+| Error rate | < 1% |
+| Token efficiency | Minimal context padding |
+| Memory per session | < 100MB |
+`:isD?`| Metric | Target |
+|--------|--------|
+| App startup | < 3s |
+| Memory usage | < 500MB |
+| Build size | < 200MB |
+`:`| Metric | Target |
+|--------|--------|
+| API response (P95) | < 300ms |
+| DB query (per request) | < 5 queries |
+| Memory usage | < 512MB |
+| Error rate | < 0.1% |
+`}
+`;
+  folder.file('tech_notes.md', tn);
+
+  // ════════════════════════════════════════════
+  // 3. .env.example
+  // ════════════════════════════════════════════
+  let envEx = `# 🔐 ENVIRONMENT VARIABLES — ${g.name}
+# Salin file ini menjadi .env.local dan isi nilainya
+# JANGAN PERNAH commit .env.local ke repository
+
+${isA?`# ── LLM Provider ────────────────────────────
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_AI_API_KEY=AI...
+
+# ── Vector Store ─────────────────────────────
+DATABASE_URL=postgresql://user:pass@host:5432/db
+
+# ── Agent Configuration ───────────────────────  
+AGENT_NAME="${g.name}"
+LOG_LEVEL=INFO
+MAX_ITERATIONS=10
+TIMEOUT_SECONDS=30
+DEBUG=false
+`:isW?`# ── CMS ──────────────────────────────────────
+CMS_BASE_URL=https://your-cms.io
+CMS_API_TOKEN=
+
+# ── Form ─────────────────────────────────────
+FORM_ENDPOINT=https://formspree.io/f/xxxxx
+
+# ── Analytics ────────────────────────────────
+GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# ── Deployment ───────────────────────────────
+SITE_URL=https://your-domain.com
+`:`# ── Database ─────────────────────────────────
+DATABASE_URL=postgresql://postgres:password@localhost:5432/${slug(g.name)}
+${db0.includes('supabase')?`NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+`:db0.includes('mysql')?`MYSQL_DATABASE=${slug(g.name)}
+MYSQL_USER=root
+MYSQL_PASSWORD=password
+`:''}
+# ── Auth ─────────────────────────────────────
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
+
+# ── Application ───────────────────────────────
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_NAME="${g.name}"
+NODE_ENV=development
+
+# ── Third Party (sesuaikan yang dipakai) ──────
+# STRIPE_SECRET_KEY=sk_test_...
+# RESEND_API_KEY=re_...
+# CLOUDINARY_URL=cloudinary://...
+`}`;
+  folder.file('.env.example', envEx);
+
+  // ════════════════════════════════════════════
+  // 4. PHASE FILES — POWERFULL ATOMIC PROMPTS
+  // ════════════════════════════════════════════
+  let phases = [];
+
+  if(isA){
+    phases = [
+      {title:'Environment Setup & Project Scaffold', steps:[
+        `Inisialisasi project Python dengan struktur berikut:
+\`\`\`bash
+mkdir ${slug(g.name)} && cd ${slug(g.name)}
+python -m venv venv
+source venv/bin/activate  # Windows: venv\\Scripts\\activate
+pip install ${orch.includes('langchain')?'langchain langchain-community langchain-openai':'langgraph langchain-anthropic'} python-dotenv pydantic
+pip freeze > requirements.txt
+\`\`\``,
+        `Buat file konfigurasi \`.env\` dari template \`.env.example\`.
+Pastikan semua API key sudah diisi sebelum lanjut.`,
+        `Buat file \`config.py\`:
+\`\`\`python
+# config.py — Konfigurasi terpusat
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    agent_name: str = "${g.name}"
+    llm_model: str = "${llm}"
+    max_iterations: int = 10
+    timeout_seconds: int = 30
+    log_level: str = "INFO"
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
+\`\`\``,
+      ], verify:[
+        '`python -c "from config import settings; print(settings.agent_name)"` berhasil tanpa error',
+        'Semua dependency terinstall: `pip list | grep langchain`',
+      ]},
+
+      {title:'Core Agent Implementation', steps:[
+        `Buat file \`agents/main_agent.py\` — implementasi agent utama:
+\`\`\`
+Prompt ke AI IDE:
+Implementasikan class MainAgent menggunakan ${orch}.
+Agent ini bertujuan: ${desc}
+Jenis: ${a.agentType||'single'}
+LLM: ${llm}
+
+Struktur yang diharapkan:
+- __init__(self, llm, tools, memory)
+- async run(self, task: str) -> AgentResult
+- _plan(self, task) -> list[Step]
+- _execute_step(self, step) -> StepResult
+- _reflect(self, results) -> str
+
+Gunakan LangGraph jika multi-agent, LangChain jika single agent.
+Output harus berupa AgentResult(status, summary, artifacts).
+\`\`\``,
+        `Buat tests/test_agent.py untuk unit test basic agent:
+\`\`\`
+Buat unit test untuk MainAgent:
+1. Test inisialisasi agent berhasil
+2. Test run() dengan task sederhana
+3. Test error handling saat LLM unavailable
+\`\`\``,
+      ], verify:[
+        '`python -m pytest tests/test_agent.py -v` semua test hijau',
+        'Agent bisa menjawab pertanyaan sederhana via `python -c "from agents.main_agent import MainAgent; ..."`',
+      ]},
+
+      {title:'Tools Integration', steps:[
+        `Buat setiap tool sebagai class terpisah di folder \`tools/\`:
+\`\`\`
+Untuk setiap tool dalam daftar: ${(a.agentTools||['web-search']).join(', ')}
+
+Buat file tools/{nama_tool}.py dengan:
+- class {NamaTool}Tool(BaseTool)
+- Implementasi async def run(self, input: str) -> ToolResult
+- Error handling yang proper
+- Unit test di tests/test_{nama_tool}.py
+
+Contoh untuk web search:
+class WebSearchTool(BaseTool):
+    name = "web_search"
+    description = "Search web untuk informasi terkini"
+    
+    async def run(self, query: str) -> ToolResult:
+        # implementasi...
+\`\`\``,
+      ], verify:[
+        'Setiap tool bisa dijalankan secara independen',
+        '`python -m pytest tests/ -v` 100% pass',
+      ]},
+
+      {title:'Memory & State Persistence', steps:[
+        `Implementasikan sistem memori berdasarkan ${(a.memory||['context']).join('+')}.
+\`\`\`
+Buat memory/memory_manager.py dengan:
+- save_conversation(session_id, messages)
+- load_conversation(session_id) -> list[Message]
+- clear_session(session_id)
+- summarize_conversation(messages) -> str (jika terlalu panjang)
+
+Gunakan SQLite untuk storage lokal, atau ${db0} untuk production.
+\`\`\``,
+      ], verify:[
+        'Memory tersimpan antar session: jalankan agent 2x dengan session_id sama',
+        'Clear session benar-benar menghapus data',
+      ]},
+
+      {title:'API Layer & Deployment', steps:[
+        `Buat REST API menggunakan FastAPI di \`api/main.py\`:
+\`\`\`
+Buat FastAPI app dengan endpoints:
+POST /run — jalankan agent dengan task
+GET /sessions/{id} — ambil history session
+DELETE /sessions/{id} — hapus session
+GET /health — health check
+
+Gunakan BackgroundTasks untuk long-running agent.
+Tambahkan rate limiting (max 10 req/menit per IP).
+Tambahkan authentication basic (API key di header).
+\`\`\``,
+        `Deploy ke ${dep}:
+\`\`\`bash
+# Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+\`\`\``,
+      ], verify:[
+        'GET http://localhost:8000/health mengembalikan {"status": "ok"}',
+        'POST /run dengan task sederhana berhasil dalam < 30 detik',
+        'Rate limiter aktif: request ke-11 dalam 1 menit ditolak dengan 429',
+      ]},
+    ];
+  } else if(isW){
+    phases = [
+      {title:'Project Init & Config Setup', steps:[
+        `Inisialisasi project ${wb}:
+\`\`\`bash
+# Untuk Astro:
+npm create astro@latest ${slug(g.name)} -- --template minimal --typescript strict --no-install
+cd ${slug(g.name)} && npm install
+
+# Tambahkan integrasi:
+npx astro add tailwind
+npx astro add ${cms==='contentful'?'@astrojs/rss':'sitemap'}
+\`\`\``,
+        `Buat \`src/config/site.ts\` — konfigurasi global:
+\`\`\`typescript
+export const SITE = {
+  name: "${g.name}",
+  url: import.meta.env.SITE_URL || "http://localhost:4321",
+  description: "${desc}",
+  lang: "id",
+  author: "Author Name",
+  social: {
+    twitter: "@handle",
+    instagram: "@handle",
+  }
+};
+\`\`\``,
+        `Buat desain system di \`src/styles/tokens.css\`:
+\`\`\`css
+:root {
+  --color-primary: #3B82F6;
+  --color-secondary: #8B5CF6;
+  --color-accent: #F59E0B;
+  --color-bg: #FFFFFF;
+  --color-text: #1F2937;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-md: 8px;
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+\`\`\``,
+      ], verify:[
+        '`npm run dev` berjalan di http://localhost:4321 tanpa error',
+        'TypeScript strict mode tidak ada error di `npm run check`',
+      ]},
+
+      {title:'Layout & Component System', steps:[
+        `Buat base layout di \`src/layouts/BaseLayout.astro\`:
+\`\`\`
+Buat BaseLayout dengan:
+- <head> lengkap: meta charset, viewport, title, description
+- Open Graph tags (og:title, og:description, og:image, og:url)
+- Twitter Card tags
+- canonical URL
+- Google Fonts preconnect
+- Slot untuk konten halaman
+- Props: title, description, image (opsional)
+\`\`\``,
+        `Buat komponen UI dasar di \`src/components/\`:
+\`\`\`
+Buat komponen berikut (HANYA yang disebutkan, tidak lebih):
+1. Header.astro — navigasi dengan mobile hamburger menu
+2. Footer.astro — footer dengan link dan copyright
+3. Hero.astro — hero section dengan heading, subheading, CTA button
+4. Button.astro — reusable button (variant: primary, secondary, ghost)
+5. Section.astro — wrapper section dengan padding konsisten
+
+Semua komponen HARUS menggunakan CSS Variables dari tokens.css.
+Semua teks dalam Bahasa Indonesia kecuali kode.
+\`\`\``,
+      ], verify:[
+        'Semua komponen render tanpa error di browser',
+        'Header hamburger menu berfungsi di mobile (< 768px)',
+        'Tidak ada layout shift saat scroll',
+      ]},
+
+      {title:'Content Pages Implementation', steps:[
+        `Buat semua halaman utama:
+\`\`\`
+Buat file halaman berikut di src/pages/:
+
+1. index.astro — Beranda
+   Seksi: Hero, Features (3-6 item), Testimonial, CTA
+   
+2. about.astro — Tentang Kami  
+   Seksi: Story, Team, Values
+
+3. services.astro — Layanan/Produk
+   Seksi: Services list, Pricing (jika ada)
+
+4. contact.astro — Kontak
+   Seksi: Form kontak, Info alamat, Map embed
+
+Setiap halaman WAJIB menggunakan BaseLayout.
+Gunakan konten dari ${cms} untuk data dinamis.
+\`\`\``,
+      ], verify:[
+        'Semua halaman bisa diakses tanpa 404',
+        'Meta title dan description unik per halaman',
+        'Tampilan di mobile responsive (test di DevTools 375px)',
+      ]},
+
+      {title:'Form, Animation & CMS Integration', steps:[
+        `Integrasikan form kontak dengan ${(a.form||['Formspree'])[0]}:
+\`\`\`
+Buat src/components/ContactForm.astro:
+- Field: nama (required), email (required), pesan (required, textarea)
+- Client-side validation sebelum submit
+- Submit ke ${(a.form||['formspree'])[0]} endpoint
+- Loading state saat submit
+- Success/error message setelah submit
+- Honeypot field untuk anti-spam
+\`\`\``,
+        `Tambahkan animasi scroll-reveal menggunakan ${(a.animation||['CSS'])[0]}:
+\`\`\`
+Buat src/scripts/animations.ts:
+- Gunakan Intersection Observer API
+- Animasikan elemen dengan class .animate-on-scroll
+- Animasi fadeUp untuk teks, fadeIn untuk gambar
+- Pastikan reduced-motion dipatuhi (prefers-reduced-motion)
+\`\`\``,
+      ], verify:[
+        'Form submisi berhasil (cek inbox Formspree)',
+        'Animasi berjalan smooth di 60fps',
+        'Animasi tidak aktif saat prefers-reduced-motion: reduce',
+      ]},
+
+      {title:'SEO, Performance & Deploy', steps:[
+        `Optimasi SEO lengkap:
+\`\`\`
+1. Generate sitemap.xml otomatis
+2. Buat robots.txt: Allow all, Sitemap: /sitemap.xml
+3. Setiap gambar WAJIB memiliki alt text deskriptif
+4. Heading hierarchy: satu H1 per halaman, H2 untuk seksi
+5. Structured data (JSON-LD) untuk halaman utama
+6. Kompres semua gambar ke WebP dengan max 200KB
+\`\`\``,
+        `Audit dan deploy:
+\`\`\`bash
+# Build production
+npm run build
+
+# Preview production
+npm run preview
+
+# Audit Lighthouse (Chrome DevTools atau npx)
+npx lighthouse http://localhost:4321 --only-categories=performance,seo,accessibility --output=html
+
+# Deploy ke ${dep}
+${dep==='vercel'?'npx vercel --prod':dep==='netlify'?'npx netlify deploy --prod':dep==='cloudflare'?'npx wrangler pages deploy dist':'# deploy sesuai provider'}
+\`\`\``,
+      ], verify:[
+        'Lighthouse score > 90 untuk Performance, SEO, Accessibility',
+        'Sitemap.xml accessible di /sitemap.xml',
+        'Website live dan semua link berfungsi',
+      ]},
+    ];
+  } else {
+    // SDLC / Software
+    const isNextjs = fe.toLowerCase().includes('next');
+    phases = [
+      {title:'Project Scaffold & Database Setup', steps:[
+        `Inisialisasi project:
+\`\`\`bash
+${isNextjs?`npx create-next-app@latest ${slug(g.name)} --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+cd ${slug(g.name)}`:`# Sesuaikan dengan framework: ${fe}`}
+
+# Install core dependencies
+npm install ${db0.includes('supabase')?'@supabase/supabase-js @supabase/auth-helpers-nextjs':db0.includes('prisma')?'@prisma/client prisma':''}
+npm install ${auth.includes('supabase')?'':'next-auth@beta'}
+npm install zod
+npm install -D @types/node
+\`\`\``,
+        `Setup database connection di \`src/lib/db.ts\`:
+\`\`\`
+Buat file src/lib/db.ts untuk koneksi ke ${db0}.
+${db0.includes('supabase')?`
+Gunakan createServerClient dan createBrowserClient dari @supabase/ssr.
+Export: supabaseAdmin (server-side, service role key)
+Export: supabaseClient (browser-side, anon key)
+`:db0.includes('prisma')?`
+Setup PrismaClient singleton untuk development hot-reload.
+Export: db (PrismaClient instance)
+`:''}
+Buat src/types/database.ts dengan semua TypeScript types untuk tabel.
+\`\`\``,
+        `Setup schema database:
+\`\`\`
+Berdasarkan deskripsi project "${desc}", generate schema database untuk ${db0}.
+
+Entitas yang diperkirakan diperlukan — sesuaikan dengan actual requirement:
+- users (id, email, name, role, created_at)
+- [entitas bisnis utama — definisikan dari konteks project]
+- [entitas pendukung]
+
+Untuk setiap tabel, sertakan:
+- Primary key (UUID lebih aman dari integer auto-increment)
+- Timestamps (created_at, updated_at)
+- Soft delete field jika data sensitif (deleted_at)
+- Index yang relevan untuk query yang sering digunakan
+
+Buat migration file atau SQL script untuk setup awal.
+\`\`\``,
+      ], verify:[
+        '`npm run dev` berjalan tanpa error di http://localhost:3000',
+        'Koneksi database berhasil: `npm run db:status` atau test via seed script',
+        'TypeScript strict mode tidak ada error: `npm run type-check`',
+      ]},
+
+      {title:'Authentication & Authorization', steps:[
+        `Implementasikan sistem auth menggunakan ${auth}:
+\`\`\`
+Buat sistem autentikasi lengkap:
+
+1. src/app/auth/login/page.tsx — Halaman login
+   - Form: email + password
+   - Validasi dengan Zod
+   - Error message yang jelas
+   - Link ke register & lupa password
+
+2. src/app/auth/register/page.tsx — Halaman daftar
+   - Form: name, email, password, confirm password
+   - Password strength indicator
+   - Terms & conditions checkbox
+
+3. src/middleware.ts — Proteksi route
+   - Public routes: /, /auth/*, /api/health
+   - Protected routes: /dashboard/*, /api/protected/*
+   - Redirect unauthenticated ke /auth/login
+
+4. src/lib/auth.ts — Auth configuration
+   - Session duration: 7 hari
+   - Refresh token handling
+\`\`\``,
+        `Buat sistem Role-Based Access Control (RBAC):
+\`\`\`typescript
+// src/types/auth.ts
+export type UserRole = 'admin' | 'manager' | 'user';
+
+export const PERMISSIONS = {
+  admin: ['read', 'write', 'delete', 'manage_users'],
+  manager: ['read', 'write'],
+  user: ['read'],
+} as const;
+
+// Buat helper:
+// canDo(user, action) => boolean
+// requireRole(role) => middleware
+\`\`\``,
+      ], verify:[
+        'Login berhasil dan session tersimpan',
+        'Akses /dashboard tanpa login → redirect ke /auth/login',
+        'Admin bisa akses semua route, user biasa tidak bisa akses admin route',
+        'Register → email verification → login flow berjalan',
+      ]},
+
+      {title:'Core Business Features', steps:[
+        `Implementasikan fitur inti berdasarkan "${desc}":
+\`\`\`
+Mulai dengan SATU fitur inti yang paling penting terlebih dahulu.
+
+INSTRUKSI UNTUK AI:
+1. Baca deskripsi project: "${desc}"
+2. Identifikasi fitur inti utama (CRUD entitas bisnis)
+3. Buat sesuai pola berikut:
+
+PATTERN: Feature per folder
+src/
+  features/
+    [nama-fitur]/
+      components/        ← UI components spesifik fitur ini
+      hooks/            ← React hooks untuk data fetching
+      actions.ts        ← Server Actions untuk mutations
+      queries.ts        ← Query functions
+      types.ts          ← TypeScript types
+      schema.ts         ← Zod validation schema
+
+CONTOH untuk setiap CRUD:
+- GET /api/[entity] — list dengan pagination & filter
+- GET /api/[entity]/[id] — detail
+- POST /api/[entity] — create dengan validasi
+- PATCH /api/[entity]/[id] — update partial
+- DELETE /api/[entity]/[id] — soft delete (preferred)
+
+SETIAP endpoint WAJIB:
+- Validasi input dengan Zod
+- Cek authorization (apakah user boleh akses?)
+- Return consistent response: { data, error, meta }
+- Log request untuk debugging
+\`\`\``,
+      ], verify:[
+        'CRUD semua entitas utama berfungsi',
+        'API mengembalikan error 401 untuk akses tidak terotorisasi',
+        'API mengembalikan error 422 untuk input tidak valid',
+        'Data tersimpan correctly di database',
+      ]},
+
+      {title:'Frontend UI & User Experience', steps:[
+        `Bangun semua halaman UI menggunakan ${ui}:
+\`\`\`
+Buat layout dan pages berikut:
+
+1. Layout utama (src/app/(dashboard)/layout.tsx):
+   - Sidebar navigasi
+   - Header dengan user menu & notifikasi
+   - Main content area
+
+2. Halaman per fitur dari phase 03:
+   - List view dengan tabel/grid, pagination, search & filter
+   - Detail view dengan semua informasi
+   - Form create/edit dengan validasi real-time
+
+3. Komponen UI reusable:
+   - DataTable dengan sorting & pagination
+   - SearchInput dengan debounce 300ms
+   - Modal/Dialog untuk konfirmasi & form
+   - Toast/Notification untuk feedback aksi
+   - LoadingState & EmptyState
+
+STANDAR UX:
+- Loading skeleton saat fetch data
+- Optimistic updates untuk aksi cepat
+- Error boundary untuk handle unexpected error
+- Responsive di semua ukuran layar (360px - 1440px+)
+\`\`\``,
+      ], verify:[
+        'Semua halaman render tanpa layout shift',
+        'Form validation berjalan real-time (bukan hanya saat submit)',
+        'Mobile view (375px) nyaman digunakan',
+        'Tidak ada console error di browser DevTools',
+      ]},
+
+      {title:'Testing, Optimization & Production Deploy', steps:[
+        `Tulis test coverage untuk semua service functions:
+\`\`\`bash
+# Install testing tools
+npm install -D vitest @testing-library/react @testing-library/user-event
+
+# Buat test untuk:
+# 1. Service functions (unit test)
+# 2. API endpoints (integration test)  
+# 3. Critical user flows (E2E dengan Playwright)
+
+# Run tests
+npm test
+npm run test:e2e
+\`\`\``,
+        `Audit dan optimasi performa:
+\`\`\`
+Lakukan audit berikut dan perbaiki semua issue:
+
+1. Database:
+   - Cek query N+1 dengan logging
+   - Tambahkan index yang belum ada
+   - Gunakan select hanya field yang diperlukan
+
+2. Frontend:
+   - Analyze bundle: npx @next/bundle-analyzer
+   - Lazy load components yang tidak critical
+   - Optimize images dengan next/image
+
+3. Security:
+   - npm audit (zero high/critical vulnerabilities)
+   - Cek semua API endpoint memiliki auth check
+   - Pastikan CORS dikonfigurasi benar
+\`\`\``,
+        `Deploy ke production di ${dep}:
+\`\`\`bash
+# 1. Set semua environment variables di ${dep} dashboard
+# 2. Koneksi database production (bukan development)
+# 3. Build dan deploy:
+${dep==='vercel'?`npx vercel --prod
+# Atau via Git: push ke main branch`:`# Deploy sesuai platform ${dep}`}
+
+# 4. Smoke test setelah deploy:
+# - Login/logout flow
+# - Create, read, update, delete satu data
+# - Cek semua API endpoint via Postman/Thunder Client
+\`\`\``,
+      ], verify:[
+        'npm test: semua test pass (coverage > 80% untuk services)',
+        'Database queries efisien (tidak ada N+1 di log)',
+        'Production URL bisa diakses dan fitur utama berjalan',
+        'npm audit: zero critical/high vulnerabilities',
+      ]},
+    ];
+  }
+
+  // Generate phase files
+  phases.forEach((ph, i) => {
+    const num = String(i+1).padStart(2,'0');
+    let fc = `# 🚀 FASE ${num}: ${(ph.title||'Phase').toUpperCase()}
+> ⚠️ Baca dan kerjakan langkah-langkah di bawah secara berurutan.
+> Selesaikan fase ini sepenuhnya SEBELUM lanjut ke fase berikutnya.
+> Jika ada hambatan, tanyakan ke AI IDE dengan konteks dari masterplan.md.
+
+---
+
+## 📋 LANGKAH PENGERJAAN
+
+`;
+    (ph.steps||[]).forEach((step, si) => {
+      fc += `### Langkah ${si+1}\n${step}\n\n`;
+    });
+
+    fc += `---
+
+## ✅ VERIFIKASI SEBELUM LANJUT
+
+Pastikan semua item berikut sudah terpenuhi sebelum lanjut ke fase berikutnya:
+
+${(ph.verify||[]).map(v=>`- [ ] ${v}`).join('\n')}
+- [ ] Tidak ada error di terminal / browser console
+- [ ] Perubahan sudah di-commit: \`git add . && git commit -m "feat: selesaikan fase ${num} - ${ph.title}"\`
+
+---
+
+## 💬 PROMPT UNTUK AI IDE (jika terhenti)
+
+\`\`\`
+Saya sedang mengerjakan project ${g.name}.
+Konteks ada di masterplan.md.
+Saya terhenti di Fase ${num}: ${ph.title}.
+
+Masalah yang dihadapi: [DESKRIPSIKAN MASALAH]
+
+Tolong bantu selesaikan dengan:
+1. Jelaskan penyebab masalah
+2. Berikan solusi konkret dengan kode
+3. Verifikasi solusi berjalan dengan test command
+\`\`\`
+`;
+    folder.file(`phase_${num}.md`, fc);
+  });
+
+  // ════════════════════════════════════════════
+  // 5. git_setup.md
+  // ════════════════════════════════════════════
+  const git = `# 🔀 GIT SETUP — ${g.name}
+
+## Inisialisasi Repository
+\`\`\`bash
+git init
+git add .
+git commit -m "initial: DevForge Studio scaffold"
+git branch -M main
+git remote add origin https://github.com/USERNAME/${slug(g.name)}.git
+git push -u origin main
+\`\`\`
+
+## Branch Strategy
+\`\`\`
+main          ← production-ready, deploy otomatis
+develop       ← integrasi semua fitur
+feature/*     ← feature branch per fase
+hotfix/*      ← perbaikan cepat production
+\`\`\`
+
+## .gitignore (tambahkan di root)
+\`\`\`gitignore
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Build
+.next/
+dist/
+build/
+out/
+
+# System
+.DS_Store
+Thumbs.db
+*.log
+\`\`\`
+
+## Commit Message Convention
+\`\`\`
+feat:     Fitur baru
+fix:      Perbaikan bug
+docs:     Update dokumentasi
+style:    Formatting (tidak ada logic change)
+refactor: Refactoring kode
+test:     Menambah test
+chore:    Update build, dependencies
+\`\`\`
+`;
+  folder.file('git_setup.md', git);
+
+  // ════════════════════════════════════════════
+  // 6. AI ENHANCEMENT — jika connected
+  // ════════════════════════════════════════════
+  if(S.aiConfig.enabled && S.aiConfig.connected){
+    const provCfg = AI_PROVIDERS[S.aiConfig.provider];
+    try {
+      // Show loading indicator
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = 'aiLoadingBanner';
+      loadingDiv.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px;background:var(--accent);color:#fff;text-align:center;font-family:var(--font);font-size:14px;font-weight:700;animation:fadeDown .3s ease`;
+      loadingDiv.innerHTML = `⚡ AI (${provCfg.name} — ${S.aiConfig.model.split('/').pop()}) sedang menganalisis project Anda dan membuat dokumen spesifik...`;
+      document.body.appendChild(loadingDiv);
+
+      const systemPrompt = `Kamu adalah arsitek software senior berpengalaman 10+ tahun. 
+Tugas kamu: Menghasilkan dokumentasi teknis SPESIFIK dan ACTIONABLE untuk project berikut.
+Setiap output HARUS spesifik ke domain bisnis project — BUKAN generic template.
+Gunakan Bahasa Indonesia untuk narasi, kode tetap dalam Bahasa Inggris/bahasa pemrograman yang sesuai.
+Output dalam format Markdown yang rapi.`;
+
+      const userPrompt = `Project: ${g.name}
+Deskripsi: ${desc}
+Mode: ${isA?'Agentic AI':isW?'Website':'Software/App'}
+Tech Stack: ${isA?`Orchestration=${orch}, LLM=${llm}, Memory=${(a.memory||[]).join(',')}`:isW?`Builder=${wb}, CMS=${cms}, Deploy=${dep}`:`Frontend=${fe}, DB=${db}, Auth=${auth}, Scale=${scl}`}
+Audience: ${a.audience||'general'}
+
+Generate dalam format JSON valid dengan struktur:
+{
+  "database_schema": "markdown berisi skema database LENGKAP spesifik project ini (tabel, kolom beserta type, constraint, relasi, index, dan contoh data seed 5 baris)",
+  "api_contracts": "markdown berisi semua endpoint API utama — request body (dengan contoh), response body (dengan contoh), HTTP status codes, dan curl example untuk testing",  
+  "prd_enhanced": "markdown berisi Product Requirements Document — Executive Summary, 5-7 User Stories dengan Acceptance Criteria spesifik, Feature List dengan prioritas (P0/P1/P2), Non-functional Requirements",
+  "coding_guidelines": "markdown berisi panduan spesifik untuk stack ini — pattern yang direkomendasikan, anti-pattern yang harus dihindari, code example dari domain bisnis ini"
+}
+
+PENTING: Semua konten harus SPESIFIK ke project "${g.name}" — bukan template generic.`;
+
+      const apiUrl = `${provCfg.baseUrl}/chat/completions`;
+      const finalUrl = S.aiConfig.useProxy ? `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}` : apiUrl;
+
+      const res = await fetch(finalUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${S.aiConfig.apiKey}`,
+          'Content-Type': 'application/json',
+          ...(S.aiConfig.provider==='openrouter' ? {
+            'HTTP-Referer': 'https://devforge.local',
+            'X-Title': 'DevForge Studio'
+          } : {})
+        },
+        body: JSON.stringify({
+          model: S.aiConfig.model,
+          messages: [
+            {role: 'system', content: systemPrompt},
+            {role: 'user', content: userPrompt}
+          ],
+          max_tokens: 4000,
+          temperature: 0.3,
+          response_format: {type: 'json_object'}
+        })
+      });
+
+      document.getElementById('aiLoadingBanner')?.remove();
+
+      if(res.ok){
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content || '{}';
+        let parsed = {};
+        try { parsed = JSON.parse(content); } catch(e) {
+          // Fallback: try to extract JSON from markdown
+          const match = content.match(/```json\n?([\s\S]*?)\n?```/);
+          if(match) try { parsed = JSON.parse(match[1]); } catch(e2){}
+        }
+
+        if(parsed.database_schema) folder.file('AI_database_schema.md',
+          `# 🗄️ DATABASE SCHEMA — ${g.name} (AI Generated)\n> Dibuat oleh ${provCfg.name} — ${S.aiConfig.model}\n\n${parsed.database_schema}`);
+
+        if(parsed.api_contracts) folder.file('AI_api_contracts.md',
+          `# 🔌 API CONTRACTS — ${g.name} (AI Generated)\n> Dibuat oleh ${provCfg.name} — ${S.aiConfig.model}\n\n${parsed.api_contracts}`);
+
+        if(parsed.prd_enhanced) folder.file('AI_prd_enhanced.md',
+          `# 📄 PRD ENHANCED — ${g.name} (AI Generated)\n> Dibuat oleh ${provCfg.name} — ${S.aiConfig.model}\n\n${parsed.prd_enhanced}`);
+
+        if(parsed.coding_guidelines) folder.file('AI_coding_guidelines.md',
+          `# 📐 CODING GUIDELINES — ${g.name} (AI Generated)\n> Dibuat oleh ${provCfg.name} — ${S.aiConfig.model}\n\n${parsed.coding_guidelines}`);
+
+        // Add AI enhancement note to masterplan
+        folder.file('masterplan.md', mp + `
+---
+## 🤖 AI ENHANCEMENT
+Bundle ini diperkuat oleh **${provCfg.name}** (${S.aiConfig.model}).
+File tambahan yang tersedia:
+- \`AI_database_schema.md\` — Schema database spesifik project ini
+- \`AI_api_contracts.md\` — Kontrak API dengan contoh request/response
+- \`AI_prd_enhanced.md\` — PRD lengkap dengan user stories
+- \`AI_coding_guidelines.md\` — Panduan coding spesifik stack ini
+
+**Cara penggunaan terbaik:**
+1. Buka semua file AI_* bersama masterplan.md di IDE AI
+2. Ikuti phase files secara berurutan
+3. Rujuk AI_database_schema.md saat membuat tabel
+4. Rujuk AI_api_contracts.md saat membuat endpoint
+`);
+      }
+    } catch(aiErr) {
+      document.getElementById('aiLoadingBanner')?.remove();
+      console.warn('AI enhancement gagal:', aiErr.message);
+      // Tetap lanjut generate bundle tanpa AI files
+      folder.file('AI_ERROR.md', `# AI Enhancement Gagal\n\nError: ${aiErr.message}\n\nBundle tetap dihasilkan tanpa AI enhancement.\nCoba lagi atau periksa koneksi API Key di AI Settings.`);
+    }
+  }
+
+  // ── Generate & Download ZIP ────────────────────────────
+  const zipBlob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(zipBlob);
+  link.download = `devforge-${slug(g.name)}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+
 
 function setTab(t){S.activeTab=t;render();window.scrollTo(0,0)}
 function restart(){Object.assign(S,{mode:null,step:0,answers:{},generating:false,generated:null,activeTab:null});render();window.scrollTo(0,0)}
@@ -2259,7 +3762,235 @@ function cpCode(id,btn){
   });
 }
 
+// ═══════════════════════════════════════════
+// AI SETTINGS PANEL
+// ═══════════════════════════════════════════
+function updateNavAIBtn(){
+  const btn = document.getElementById('aiNavBtn');
+  if(!btn) return;
+  btn.classList.remove('ai-active','ai-connected');
+  if(S.aiConfig.connected && S.aiConfig.enabled){
+    btn.textContent = '🟢 AI Aktif';
+    btn.classList.add('ai-connected');
+  } else if(S.aiConfig.apiKey){
+    btn.textContent = '🤖 AI Settings';
+    btn.classList.add('ai-active');
+  } else {
+    btn.textContent = '🤖 AI Settings';
+  }
+}
+
+function renderModelOptions(provider){
+  const models = AI_PROVIDERS[provider]?.models || [];
+  const cur = S.aiConfig.model;
+  return models.map(m=>{
+    const badge = m.free ? '<span class="ai-badge free">GRATIS</span>' : '';
+    return `<option value="${m.id}" ${m.id===cur?'selected':''}>${m.label} [${m.provider}]${m.free?' ★':''}</option>`;
+  }).join('');
+}
+
+function openAIPanel(){
+  if(document.getElementById('aiModalOverlay')) return;
+  const prov = S.aiConfig.provider;
+  const overlay = document.createElement('div');
+  overlay.id = 'aiModalOverlay';
+  overlay.className = 'ai-modal-overlay';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeAIPanel(); };
+  
+  const statusDot = S.aiConfig.connected ? 'green' : (S.aiConfig.apiKey ? 'yellow' : '');
+  const statusText = S.aiConfig.connected ? `Terhubung ke ${AI_PROVIDERS[prov]?.name} — Model: ${S.aiConfig.model}` 
+    : S.aiConfig.apiKey ? 'API Key tersimpan — belum diuji' : 'Belum terhubung. Masukkan API Key dan tes koneksi.';
+
+  overlay.innerHTML = `
+  <div class="ai-modal">
+    <button class="ai-modal-close" onclick="closeAIPanel()">✕</button>
+    <div class="ai-modal-title">🤖 AI Enhancement</div>
+    <div class="ai-modal-sub">Sambungkan AI untuk menghasilkan Project Bundle yang jauh lebih spesifik dan powerfull — database schema nyata, API contracts detail, dan PRD berbasis domain project Anda.</div>
+    
+    <div class="ai-status-bar">
+      <div class="ai-dot ${statusDot}" id="aiDot"></div>
+      <div class="ai-status-text" id="aiStatusText">${statusText}</div>
+    </div>
+
+    <label class="ai-label">Provider</label>
+    <div class="ai-provider-tabs" id="aiProvTabs">
+      ${Object.entries(AI_PROVIDERS).map(([key, p])=>`
+        <div class="ai-prov-tab ${key===prov?'active':''}" onclick="switchAIProvider('${key}')">
+          <span class="prov-name">${p.name}</span>
+          <span class="prov-url">${key==='sumopod'?'sumopod.com':'openrouter.ai'}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="ai-row">
+      <div class="ai-field" style="flex:1.5">
+        <label class="ai-label">Model AI</label>
+        <select class="ai-select" id="aiModelSel" onchange="S.aiConfig.model=this.value">
+          ${renderModelOptions(prov)}
+        </select>
+      </div>
+    </div>
+
+    <div class="ai-field">
+      <label class="ai-label">API Key <a href="${AI_PROVIDERS[prov]?.docsUrl}" target="_blank" style="font-weight:400;text-transform:none;font-size:10px;color:var(--accent);margin-left:6px">→ Dapatkan key</a></label>
+      <input class="ai-input" id="aiKeyInput" type="password" 
+        placeholder="${AI_PROVIDERS[prov]?.keyPlaceholder}"
+        value="${S.aiConfig.apiKey}"
+        oninput="S.aiConfig.apiKey=this.value;S.aiConfig.connected=false;updateAIStatus('idle')">
+    </div>
+
+    <div class="ai-field ai-checkbox-row" style="margin-top:-10px;margin-bottom:15px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--text2)">
+          <input type="checkbox" id="aiProxyCheck" ${S.aiConfig.useProxy?'checked':''} 
+            onchange="S.aiConfig.useProxy=this.checked;S.aiConfig.connected=false;updateAIStatus('idle')">
+          <span>Gunakan Internal Proxy (Serverless — Direkomendasikan)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="ai-footer">
+      <button class="ai-test-btn" onclick="testAPIKey()">⚡ Tes Koneksi</button>
+      <button class="ai-save-btn" onclick="saveAIConfig()">💾 Simpan &amp; Aktifkan</button>
+    </div>
+    <div class="ai-usage-note">
+      🔐 API Key disimpan di <strong>localStorage browser Anda</strong> saja — tidak dikirim ke server manapun.<br>
+      Model GRATIS (★) dapat digunakan tanpa biaya tambahan.
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function switchAIProvider(prov){
+  S.aiConfig.provider = prov;
+  S.aiConfig.connected = false;
+  // Set default free model for new provider
+  const freeModel = AI_PROVIDERS[prov]?.models.find(m=>m.free);
+  if(freeModel) S.aiConfig.model = freeModel.id;
+  // Re-render tabs & model options
+  document.querySelectorAll('.ai-prov-tab').forEach((el,i)=>{
+    el.classList.toggle('active', Object.keys(AI_PROVIDERS)[i]===prov);
+  });
+  const sel = document.getElementById('aiModelSel');
+  if(sel) sel.innerHTML = renderModelOptions(prov);
+  // Update key placeholder
+  const inp = document.getElementById('aiKeyInput');
+  if(inp) inp.placeholder = AI_PROVIDERS[prov]?.keyPlaceholder || '';
+  updateAIStatus('idle');
+}
+
+function updateAIStatus(state, msg, detail){
+  const dot = document.getElementById('aiDot');
+  const txt = document.getElementById('aiStatusText');
+  if(!dot||!txt) return;
+  dot.className = 'ai-dot';
+  if(state==='loading'){ dot.classList.add('yellow'); txt.textContent = '⏳ Menguji koneksi...'; }
+  else if(state==='ok'){ dot.classList.add('green'); txt.textContent = msg || '✅ Koneksi berhasil!'; }
+  else if(state==='err'){ 
+    dot.classList.add('red'); 
+    txt.innerHTML = `<span style="color:var(--red)">❌ Gagal: ${msg}</span>${detail?`<div style="font-size:10px;margin-top:4px;opacity:0.7">${detail}</div>`:''}`; 
+  }
+  else { txt.textContent = S.aiConfig.apiKey ? '🔑 API Key tersedia — klik "Tes Koneksi"' : 'Masukkan API Key dan tes koneksi.'; }
+}
+
+async function testAPIKey(){
+  const key = document.getElementById('aiKeyInput')?.value || S.aiConfig.apiKey;
+  if(!key){ updateAIStatus('err','⚠️ API Key kosong.'); return; }
+  S.aiConfig.apiKey = key;
+  updateAIStatus('loading');
+  
+  const prov = AI_PROVIDERS[S.aiConfig.provider];
+  const apiUrl = `${prov.baseUrl}/chat/completions`;
+  const internalProxyUrl = '/api/ai-proxy';
+
+  const logErr = (msg, detail) => {
+    console.error('[AI TEST]', msg, detail);
+    updateAIStatus('err', msg, detail);
+  };
+
+  try {
+    // 1. Determine the target for fetch
+    // If local dev without Proxy option enabled, still try direct (though CORS will likely block)
+    // If Proxy enabled, always use our new Serverless endpoint /api/ai-proxy
+    const fetchTarget = S.aiConfig.useProxy ? internalProxyUrl : apiUrl;
+    const fetchMethod = S.aiConfig.useProxy ? 'POST' : 'POST';
+    
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(!S.aiConfig.useProxy ? { 'Authorization': `Bearer ${key}` } : {})
+        },
+        body: JSON.stringify(S.aiConfig.useProxy ? {
+          provider: S.aiConfig.provider,
+          apiUrl: apiUrl,
+          apiKey: key,
+          payload: {
+            model: S.aiConfig.model,
+            messages:[{role:'user',content:'Say OK'}],
+            max_tokens: 10
+          }
+        } : {
+          model: S.aiConfig.model,
+          messages:[{role:'user',content:'Say OK'}],
+          max_tokens: 10
+        })
+    };
+
+    const res = await fetch(fetchTarget, requestOptions);
+    
+    if(!res.ok){ 
+      let bodyText = '';
+      try { bodyText = await res.text(); } catch(e){}
+      throw new Error(`Server returned ${res.status}: ${bodyText.substring(0,100)}...`);
+    }
+    
+    const data = await res.json();
+    if(data.choices?.[0] || data.id){
+      S.aiConfig.connected = true;
+      updateAIStatus('ok', `✅ Terhubung! Model: ${S.aiConfig.model.split('/').pop()}`);
+    } else {
+       throw new Error('Format respons tidak didukung oleh Proxy/Provider.');
+    }
+  } catch(err){
+    S.aiConfig.connected = false;
+    let msg = err.message;
+    let detail = '';
+    if(msg==='Failed to fetch'){
+      msg = 'Network Error / Proxy Aborted';
+      detail = `Browser/Server memblokir koneksi. 
+                <br>Pastikan Anda menjalankan aplikasi via <strong>npx vercel dev</strong> untuk mengaktifkan fungsi Proxy di /api.`;
+    }
+    logErr(msg, detail);
+  }
+}
+
+function saveAIConfig(){
+  const key = document.getElementById('aiKeyInput')?.value || S.aiConfig.apiKey;
+  S.aiConfig.apiKey = key;
+  S.aiConfig.enabled = !!(key && S.aiConfig.connected);
+  try { localStorage.setItem('devforge_ai', JSON.stringify(S.aiConfig)); } catch(e){}
+  closeAIPanel();
+  updateNavAIBtn();
+  if(S.aiConfig.enabled){
+    alert(`✅ AI Enhancement aktif!\nProvider: ${AI_PROVIDERS[S.aiConfig.provider]?.name}\nModel: ${S.aiConfig.model}\n\nDownload Bundle selanjutnya akan diperkuat oleh AI.`);
+  } else if(key && !S.aiConfig.connected){
+    alert('⚠️ API Key disimpan tapi belum terverifikasi.\nSilakan tes koneksi terlebih dahulu.');
+  }
+}
+
+function closeAIPanel(){
+  const el = document.getElementById('aiModalOverlay');
+  if(el){ el.style.animation='fadeIn .15s ease reverse'; setTimeout(()=>el.remove(),150); }
+}
+
+// Call to init nav button on load
+setTimeout(updateNavAIBtn, 100);
+
 render();
 </script>
+  <footer style="text-align:center; padding: 40px 20px; color:var(--text3); font-size:12px; font-family:var(--font); opacity:0.6; letter-spacing:0.05em;">
+    &copy; 2026 B.O.A Indonesia
+  </footer>
 </body>
 </html>

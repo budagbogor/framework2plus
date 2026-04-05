@@ -6,6 +6,7 @@
   "scripts": {
     "start": "python3 -m http.server 3000 --directory public",
     "dev": "npx serve public -p 3000",
+    "dev:vercel": "vercel dev",
     "serve": "npx serve public -p 3000",
     "deploy:gh-pages": "gh-pages -d public",
     "deploy:netlify": "netlify deploy --prod --dir public",
