@@ -3765,17 +3765,28 @@ PENTING: Semua konten harus SPESIFIK ke project "${g.name}" — bukan template g
           // 1. Handle Puter.js Case (Keyless)
           if (S.aiConfig.provider === 'puter') {
               console.log('[AI] Using Puter.js for generation...');
-              const response = await puter.ai.chat(userPrompt, {
-                  model: currentModel,
-                  system_message: systemPrompt,
-                  json: true
-              });
-              // Normalize Puter response to match fetch-like structure
-              return {
-                  ok: true,
-                  status: 200,
-                  json: async () => ({ choices: [{ message: { content: response.toString() } }] })
-              };
+              // Combine system and user prompts for better compatibility with Puter.js v2 SDK
+              const combinedPrompt = `${systemPrompt}\n\nUser Request:\n${userPrompt}`;
+              
+              try {
+                  const response = await puter.ai.chat(combinedPrompt, {
+                      model: currentModel
+                  });
+                  
+                  if (!response) throw new Error('Puter returned empty response.');
+
+                  console.log('[AI] Puter.js success:', response.toString().substring(0, 50) + '...');
+
+                  // Normalize Puter response to match fetch-like structure
+                  return {
+                      ok: true,
+                      status: 200,
+                      json: async () => ({ choices: [{ message: { content: response.toString() } }] })
+                  };
+              } catch (err) {
+                  console.error('[AI ERROR] Puter JS Failed:', err);
+                  throw err; // Re-throw to be caught by the outer catch block
+              }
           }
 
           // 2. Handle Proxy/Direct Fetch Case
@@ -4062,12 +4073,19 @@ async function testAPIKey(){
       // 1. Handle Puter.js Case
       if (S.aiConfig.provider === 'puter') {
           console.log('[AI TEST] Using Puter.js...');
-          const response = await puter.ai.chat("Say OK", { model: modelId });
-          return {
-              ok: true,
-              status: 200,
-              json: async () => ({ id: 'puter-test', choices: [{ message: { content: response.toString() } }] })
-          };
+          try {
+              const response = await puter.ai.chat("Say OK", { model: modelId });
+              if (!response) throw new Error('Puter returned empty response.');
+              
+              return {
+                  ok: true,
+                  status: 200,
+                  json: async () => ({ id: 'puter-test', choices: [{ message: { content: response.toString() } }] })
+              };
+          } catch (err) {
+              console.error('[AI TEST ERROR] Puter JS Failed:', err);
+              throw err;
+          }
       }
 
       // 2. Handle Fetch Case
