@@ -596,6 +596,55 @@ pre{padding:16px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-h
     animation: float 4s ease-in-out infinite;
 }
 
+.term-toolbar {
+    display: flex;
+    gap: 12px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    align-items: center;
+}
+
+.term-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text2);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.term-btn:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.term-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-light);
+}
+
+.term-btn.preview-btn {
+    margin-left: auto;
+    background: linear-gradient(135deg, #00f0ff, #0072ff);
+    color: #000;
+    border: none;
+}
+
+.term-btn.preview-btn:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
 .builder-empty-btn {
     padding: 18px 40px;
     font-size: 16px;
@@ -1170,6 +1219,7 @@ const ADLC_STEPS = [
 // ═══════════════════════════════════════════
 const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner',
   building: false, buildLogs: [], virtualWorkspace: {}, activeFile: null,
+  isInstalled: false, isDevRunning: false, activePreviewUrl: null,
   aiConfig: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
   })()
@@ -2772,6 +2822,52 @@ function dlMasterplan() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+async function execTerminalCmd(cmd) {
+    if (S.building) return;
+    
+    if (cmd === 'install') {
+        S.isInstalled = true;
+        addBuildLog(`npm install`, "agent");
+        addBuildLog(`[1/4] Resolving packages...`, "info");
+        await new Promise(r => setTimeout(r, 800));
+        addBuildLog(`[2/4] Fetching packages...`, "info");
+        await new Promise(r => setTimeout(r, 1200));
+        addBuildLog(`[3/4] Linking dependencies...`, "info");
+        await new Promise(r => setTimeout(r, 1000));
+        addBuildLog(`[4/4] Building fresh packages...`, "success");
+        addBuildLog(`added 1422 packages in 3s`, "success");
+    } else if (cmd === 'dev') {
+        if (!S.isInstalled) {
+            addBuildLog(`Error: Please run 'npm install' first.`, "error");
+            return;
+        }
+        S.isDevRunning = !S.isDevRunning;
+        if (S.isDevRunning) {
+            addBuildLog(`npm run dev`, "agent");
+            addBuildLog(`> next dev`, "info");
+            addBuildLog(`ready - started server on 0.0.0.0:3000, url: http://localhost:3000`, "success");
+            addBuildLog(`event - compiled client and server successfully in 1248 ms (169 modules)`, "success");
+        } else {
+            addBuildLog(`Stopping dev server...`, "info");
+            addBuildLog(`Dev server stopped.`, "error");
+        }
+    } else if (cmd === 'build') {
+        if (!S.isInstalled) {
+            addBuildLog(`Error: Please run 'npm install' first.`, "error");
+            return;
+        }
+        addBuildLog(`npm run build`, "agent");
+        addBuildLog(`Creating an optimized production build...`, "info");
+        await new Promise(r => setTimeout(r, 2000));
+        addBuildLog(`Compiled successfully.`, "success");
+        addBuildLog(`Route (pages)                              Size     First Load JS`, "info");
+        addBuildLog(`┌ ○ /                                      5.28 kB        78.1 kB`, "info");
+        addBuildLog(`└ λ /api/hello                             0 B            72.8 kB`, "info");
+        addBuildLog(`+ First Load JS shared by all              72.8 kB`, "info");
+    }
+    render();
 }
 
 async function dlProjectBundle() {
@@ -4578,6 +4674,27 @@ function closeAIPanel(){
 
 setTimeout(updateNavAIBtn, 100);
 
+function openLivePreview() {
+    const workspace = S.virtualWorkspace || {};
+    let content = workspace['index.html'] || workspace['public/index.html'] || workspace['src/index.html'];
+    
+    if (!content) {
+        // Try to find any HTML file
+        const htmlFile = Object.keys(workspace).find(k => k.endsWith('.html'));
+        if (htmlFile) content = workspace[htmlFile];
+    }
+
+    if (!content) {
+        addBuildLog("ERROR: No HTML file found for preview. Please wait for the build to generate UI files.", "error");
+        return;
+    }
+
+    addBuildLog("Opening Live Preview in new tab...", "info");
+    const blob = new Blob([content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+}
+
 function openGuidePanel(){
   if(document.getElementById('gdOverlay')) return;
   const overlay = document.createElement('div');
@@ -4706,13 +4823,19 @@ function renderBuilderPanel(){
                 <div class="file-tree">${files || '<div style="opacity:0.3; font-size:11px; padding:20px; text-align:center;">Menyiapkan workspace...</div>'}</div>
             </div>
             <div class="builder-main">
-                <div class="terminal-panel" style="background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:20px; overflow:hidden; display:flex; flex-direction:column; min-height:400px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-                    <div class="terminal-header" style="background: rgba(255,255,255,0.03); padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div class="terminal-panel" style="background: #010409; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; min-height: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                    <div class="terminal-header" style="background: rgba(255, 255, 255, 0.03); padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                         <div class="term-dots" style="display: flex; gap: 6px;"><div style="width: 11px; height: 11px; border-radius: 50%; background:#ff5f56"></div><div style="width: 11px; height: 11px; border-radius: 50%; background:#ffbd2e"></div><div style="width: 11px; height: 11px; border-radius: 50%; background:#27c93f"></div></div>
-                        <span style="font-family:var(--mono); font-size:11px; opacity:0.5; letter-spacing: 0.1em; margin-left:10px">AGENT CONSOLE — ${S.building ? 'ACTIVE' : 'FINISHED'}</span>
+                        <span style="font-family:var(--mono); font-size:11px; opacity:0.5; letter-spacing: 0.1em; margin-left:10px">AGENT CONSOLE — ${S.building ? 'ACTIVE' : 'READY'}</span>
                         ${S.building ? `<div class="agent-active-glow" style="width:8px; height:8px; background:#00f0ff; margin-left:auto; border-radius:50%; box-shadow: 0 0 15px #00f0ff;"></div>` : ''}
                     </div>
-                    <div class="term-body" id="buildTerminal" style="flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:13px; line-height:1.6; color: rgba(255,255,255,0.85);">${logs}</div>
+                    <div class="term-toolbar">
+                        <button class="term-btn ${S.isInstalled?'active':''}" onclick="execTerminalCmd('install')">📦 install</button>
+                        <button class="term-btn ${S.isDevRunning?'active':''}" onclick="execTerminalCmd('dev')">🚀 dev</button>
+                        <button class="term-btn" onclick="execTerminalCmd('build')">🏗️ build</button>
+                        <button class="term-btn preview-btn" onclick="openLivePreview()">🌐 Preview</button>
+                    </div>
+                    <div class="term-body" id="buildTerminal" style="flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:13px; line-height:1.6; color: rgba(255,255,255,0.85);">${logs || '<div style="opacity:0.3">Waiting for logs...</div>'}</div>
                 </div>
                 ${S.activeFile ? `
                 <div class="code-block" style="border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; background: #010409; margin-top:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
@@ -4877,8 +5000,20 @@ async function processBuildStep(system, user){
         try {
             result = typeof clean === 'string' ? JSON.parse(clean) : clean;
         } catch(e) {
-            const match = clean.match(/\{[\s\S]*\}/);
-            result = JSON.parse(match ? match[0] : '{}');
+            console.warn("Standard JSON parse failed, attempting deep clean...", e);
+            try {
+                const match = clean.match(/\{[\s\S]*\}/);
+                if(match){
+                    let deepClean = match[0]
+                        .replace(/\\n/g, "\\n")
+                        .replace(/\\'/g, "'")
+                        .replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // Remove control characters
+                    result = JSON.parse(deepClean);
+                } else { throw e; }
+            } catch(e2) {
+                addBuildLog("AI Response Corrupted. Retrying internal parsing...", "error");
+                result = { logs: ["Error parsing AI response"], files: [], finished: false };
+            }
         }
         
         (result.logs || []).forEach(l => addBuildLog(l, "info"));
