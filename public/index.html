@@ -645,6 +645,67 @@ pre{padding:16px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-h
     transform: scale(1.05);
 }
 
+.chat-container {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.chat-input-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-input-field {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 18px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-input-field:focus {
+    border-color: var(--accent);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 15px var(--accent-light);
+}
+
+.chat-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chat-send-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 5px 15px var(--accent-light);
+}
+
+.chat-send-btn:active {
+    transform: scale(0.95);
+}
+
 .builder-empty-btn {
     padding: 18px 40px;
     font-size: 16px;
@@ -1220,6 +1281,7 @@ const ADLC_STEPS = [
 const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner',
   building: false, buildLogs: [], virtualWorkspace: {}, activeFile: null,
   isInstalled: false, isDevRunning: false, activePreviewUrl: null,
+  chatHistory: [],
   aiConfig: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
   })()
@@ -2826,6 +2888,11 @@ function dlMasterplan() {
 
 async function execTerminalCmd(cmd) {
     if (S.building) return;
+
+    if (Object.keys(S.virtualWorkspace).length === 0) {
+        addBuildLog(`Peringatan: Terminal ini adalah simulasi.`, "amber");
+        addBuildLog(`→ Jalankan 'Mulai Pembangunan Otonom' agar perintah ini memiliki efek pada file nyata.`, "info");
+    }
     
     if (cmd === 'install') {
         S.isInstalled = true;
@@ -4685,7 +4752,12 @@ function openLivePreview() {
     }
 
     if (!content) {
-        addBuildLog("ERROR: No HTML file found for preview. Please wait for the build to generate UI files.", "error");
+        if(Object.keys(workspace).length === 0) {
+            addBuildLog("ERROR: Virtual Workspace masih kosong.", "error");
+            addBuildLog("→ Silakan klik tombol '🚀 Mulai Pembangunan Otonom' terlebih dahulu di tengah layar agar AI dapat membangun file fisik.", "info");
+        } else {
+            addBuildLog("ERROR: File HTML utama (index.html) tidak ditemukan untuk pratinjau.", "error");
+        }
         return;
     }
 
@@ -4837,6 +4909,16 @@ function renderBuilderPanel(){
                     </div>
                     <div class="term-body" id="buildTerminal" style="flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:13px; line-height:1.6; color: rgba(255,255,255,0.85);">${logs || '<div style="opacity:0.3">Waiting for logs...</div>'}</div>
                 </div>
+                
+                <div class="chat-container">
+                    <div class="chat-input-row">
+                        <input type="text" id="agentChatInput" class="chat-input-field" placeholder="Minta revisi atau tambah fitur... (Contoh: 'Tambahkan halaman login')" onkeydown="if(event.key==='Enter') submitAgentChat()">
+                        <button class="chat-send-btn" onclick="submitAgentChat()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+
                 ${S.activeFile ? `
                 <div class="code-block" style="border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; background: #010409; margin-top:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
                     <div class="code-header" style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background: rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -4888,6 +4970,55 @@ function addBuildLog(msg, type='info'){
 function viewVirtualFile(p){
     S.activeFile = p;
     render();
+}
+
+async function submitAgentChat() {
+    const input = document.getElementById('agentChatInput');
+    const msg = input.value.trim();
+    if (!msg || S.building) return;
+
+    input.value = '';
+    addBuildLog(`USER: ${msg}`, 'agent');
+    
+    S.building = true;
+    render();
+
+    try {
+        const workspaceFiles = Object.keys(S.virtualWorkspace).join(", ");
+        const masterplan = S.virtualWorkspace['MASTERPLAN.md'] || "Belum ada masterplan.";
+        
+        const systemPrompt = `Kamu adalah SENIOR FULLSTACK DEVELOPER.
+Tugas: Melakukan REVISI atau PENAMBAHAN FITUR berdasarkan permintaan USER.
+Konteks Workspace: [${workspaceFiles}]
+Isi MASTERPLAN.md Saat Ini:
+${masterplan}
+
+ATURAN:
+1. Jika user meminta revisi, perbarui file yang ada atau buat file baru.
+2. JANGAN menghapus file yang tidak terkait dengan revisi.
+3. Tetap gunakan format JSON yang konsisten.
+4. Update MASTERPLAN.md jika ada perubahan arsitektur besar.
+
+FORMAT RESPONS (Valid JSON):
+{
+  "logs": ["Status revisi"],
+  "files": [
+    {"path": "file/diperbarui.ext", "content": "kode baru"}
+  ],
+  "finished": true
+}`;
+
+        const userPrompt = `USER REQUEST: "${msg}"
+Lakukan perubahan yang diperlukan agar hasil sesuai dengan permintaan user di atas.`;
+
+        await processBuildStep(systemPrompt, userPrompt);
+        addBuildLog("REVISION COMPLETED SUCCESSFULLY.", "success");
+    } catch (err) {
+        addBuildLog(`REVISION ERROR: ${err.message}`, "error");
+    } finally {
+        S.building = false;
+        render();
+    }
 }
 
 async function runAutonomousLoop(){
