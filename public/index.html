@@ -1340,13 +1340,39 @@ const ADLC_STEPS = [
 // STATE
 // ═══════════════════════════════════════════
 const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner',
-  building: false, buildLogs: [], virtualWorkspace: {}, activeFile: null,
+  isNative: !!window.__TAURI__,
+  workspacePath: localStorage.getItem('df_workspace_path') || 'C:\\DevForgeProjects',
+  building: false, buildLogs: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_logs') || '[]'); } catch(e){ return []; }
+  })(), 
+  virtualWorkspace: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_workspace') || '{}'); } catch(e){ return {}; }
+  })(), 
+  activeFile: null,
   isInstalled: false, isDevRunning: false, activePreviewUrl: null,
   chatHistory: [],
   aiConfig: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
   })()
 };
+
+// Tauri Bridge
+const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null;
+const listen = window.__TAURI__ ? window.__TAURI__.event.listen : null;
+
+if (listen) {
+    listen('terminal-output', (event) => {
+        addBuildLog(event.payload, 'info');
+    });
+}
+
+// Fungsi Helper untuk Auto-Save
+function saveWorkspaceToLocal() {
+    try {
+        localStorage.setItem('devforge_workspace', JSON.stringify(S.virtualWorkspace || {}));
+        localStorage.setItem('devforge_logs', JSON.stringify(S.buildLogs || []));
+    } catch(e) { console.warn("Gagal menyimpan ke LocalStorage (mungkin data terlalu besar)"); }
+}
 // Defaults for aiConfig
 S.aiConfig = Object.assign({provider:'sumopod', model:'seed-2-0-lite-free', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
 
@@ -2956,20 +2982,27 @@ async function execTerminalCmd(cmd) {
     }
     
     if (cmd === 'install') {
-        S.isInstalled = true;
-        addBuildLog(`npm install`, "agent");
-        addBuildLog(`[1/4] Resolving packages...`, "info");
-        await new Promise(r => setTimeout(r, 800));
-        addBuildLog(`[2/4] Fetching packages...`, "info");
-        await new Promise(r => setTimeout(r, 1200));
-        addBuildLog(`[3/4] Linking dependencies...`, "info");
-        await new Promise(r => setTimeout(r, 1000));
-        addBuildLog(`[4/4] Building fresh packages...`, "success");
-        addBuildLog(`added 1422 packages in 3s`, "success");
+        if (S.isNative) {
+            addBuildLog(`Running native npm install...`, "agent");
+            invoke('execute_command', { cmd: 'npm', args: ['install'], cwd: S.workspacePath });
+        } else {
+            S.isInstalled = true;
+            addBuildLog(`npm install`, "agent");
+            addBuildLog(`[1/4] Resolving packages...`, "info");
+            await new Promise(r => setTimeout(r, 800));
+            addBuildLog(`[2/4] Fetching packages...`, "info");
+            await new Promise(r => setTimeout(r, 1200));
+            addBuildLog(`[3/4] Linking dependencies...`, "info");
+            await new Promise(r => setTimeout(r, 1000));
+            addBuildLog(`[4/4] Building fresh packages...`, "success");
+            addBuildLog(`added 1422 packages in 3s`, "success");
+        }
     } else if (cmd === 'dev') {
-        if (!S.isInstalled) {
-            addBuildLog(`Error: Please run 'npm install' first.`, "error");
-            return;
+        if (S.isNative) {
+            addBuildLog(`Starting native dev server...`, "agent");
+            invoke('execute_command', { cmd: 'npm', args: ['run', 'dev'], cwd: S.workspacePath });
+        } else if (S.isDevRunning) {
+            // ... (rest of dev logic)
         }
         S.isDevRunning = !S.isDevRunning;
         if (S.isDevRunning) {
@@ -4951,9 +4984,10 @@ function renderBuilderPanel(){
         <div class="builder-grid">
             <div class="builder-sidebar">
                 <div class="builder-head">
-                    <span class="builder-title">Virtual Explorer</span>
-                    ${!S.building ? `<button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 6px 12px; font-size: 11px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.2); border-radius: 8px;">📥 Download Source</button>` : ''}
+                    <span class="builder-title">Explorer ${S.isNative ? '🏠' : '☁️'}</span>
+                    ${!S.building ? `<button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 6px 12px; font-size: 11px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.2); border-radius: 8px;">📥 Export</button>` : ''}
                 </div>
+                ${S.isNative ? `<div style="padding:10px; font-size:10px; opacity:0.6; border-bottom:1px solid rgba(255,255,255,0.05)">Path: ${S.workspacePath}</div>` : ''}
                 <div class="file-tree">${files || '<div style="opacity:0.3; font-size:11px; padding:20px; text-align:center;">Menyiapkan workspace...</div>'}</div>
             </div>
             <div class="builder-main">
@@ -5036,6 +5070,7 @@ async function startAutonomousBuild(){
 function addBuildLog(msg, type='info'){
     const time = new Date().toLocaleTimeString();
     S.buildLogs.push({time, msg, type});
+    saveWorkspaceToLocal();
     render();
     setTimeout(() => {
         const term = document.getElementById('buildTerminal');
@@ -5074,6 +5109,7 @@ ATURAN:
 2. JANGAN menghapus file yang tidak terkait dengan revisi.
 3. Tetap gunakan format JSON yang konsisten.
 4. Update MASTERPLAN.md jika ada perubahan arsitektur besar.
+5. DILARANG menggunakan atribut 'integrity' pada tag <link> atau <script> untuk library eksternal (seperti FontAwesome, Google Fonts, dll) karena sering menyebabkan error pemblokiran di browser.
 
 FORMAT RESPONS (Valid JSON):
 {
@@ -5138,6 +5174,7 @@ ATURAN:
 2. Tulis kode nyata, lengkap, fungsional, dan modular.
 3. Di iterasi terakhir, wajib sertakan file konfigurasi deployment (misal vercel.json).
 4. SET finished: true HANYA jika project sudah 100% tuntas.
+5. DILARANG menggunakan atribut 'integrity' pada tag <link> atau <script> untuk library eksternal (seperti FontAwesome, Google Fonts, dll) karena sering menyebabkan error pemblokiran di browser.
 
 FORMAT RESPONS (Valid JSON):
 {
@@ -5225,10 +5262,17 @@ async function processBuildStep(system, user){
         
         (result.logs || []).forEach(l => addBuildLog(l, "info"));
         (result.files || []).forEach(f => {
+            const fullPath = S.isNative ? `${S.workspacePath}/${S.generated.name}/${f.path}` : f.path;
             S.virtualWorkspace[f.path] = f.content;
+            
+            if (S.isNative && invoke) {
+                invoke('save_file', { path: fullPath, content: f.content });
+            }
+            
             addBuildLog(`Manufacturing module: ${f.path}`, "success");
             if(!S.activeFile) S.activeFile = f.path;
         });
+        saveWorkspaceToLocal();
         
         if(result.finished) S.building = false;
         render();
@@ -5261,6 +5305,8 @@ async function downloadVirtualProject(){
 }
 
 function restart(){
+    localStorage.removeItem('devforge_logs');
+    localStorage.removeItem('devforge_workspace');
     Object.assign(S,{mode:null,step:0,answers:{},generating:false,generated:null,activeTab:null, building:false, buildLogs:[], virtualWorkspace:{}, activeFile:null});
     render();
     window.scrollTo(0,0);

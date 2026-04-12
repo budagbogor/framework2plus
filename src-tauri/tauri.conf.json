@@ -1,0 +1,35 @@
+{
+  "productName": "DevForge Studio",
+  "version": "2.0.0",
+  "identifier": "com.devforge.studio.native",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:3001",
+    "beforeBuildCommand": "",
+    "frontendDist": "../public"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DevForge Studio Pro",
+        "width": 1280,
+        "height": 850,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://* blob: data:;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png"
+    ],
+    "publisher": "B.O.A Indonesia"
+  }
+}
