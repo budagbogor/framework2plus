@@ -1,6 +1,6 @@
 {
   "productName": "DevForge Studio",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "identifier": "com.devforge.studio.native",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -25,10 +25,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
-      "icons/128x128.png"
+      "icons/128x128.png",
+      "icons/icon.ico"
     ],
     "publisher": "B.O.A Indonesia"
   }

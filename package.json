@@ -1,18 +1,22 @@
 {
   "name": "devforge-studio",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Smart framework generator for Software (SDLC) and Agentic AI (ADLC) projects",
   "main": "public/index.html",
   "scripts": {
     "start": "python3 -m http.server 3001 --directory public",
     "dev": "npx serve public -p 3001",
+    "desktop:dev": "node ./node_modules/@tauri-apps/cli/tauri.js dev",
+    "desktop:build": "node ./node_modules/@tauri-apps/cli/tauri.js build",
+    "desktop:exe": "node ./node_modules/@tauri-apps/cli/tauri.js build --bundles nsis",
+    "desktop:msi": "node ./node_modules/@tauri-apps/cli/tauri.js build --bundles msi",
     "dev:vercel": "vercel dev",
     "serve": "npx serve public -p 3001",
-    "build": "npx shx rm -rf dist && npx shx mkdir -p dist && npx shx cp -r public/* dist/ && npx shx cp -r api dist/ 2>null || true && echo '✓ Build Berhasil! File siap di folder /dist'",
+    "build": "npx shx rm -rf dist && npx shx mkdir -p dist && npx shx cp -r public/* dist/ && npx shx cp -r api dist/ 2>null || true && echo 'Build Berhasil! File siap di folder /dist'",
     "deploy:gh-pages": "gh-pages -d public",
     "deploy:netlify": "netlify deploy --prod --dir public",
     "open": "open public/index.html",
-    "tauri": "tauri"
+    "tauri": "node ./node_modules/@tauri-apps/cli/tauri.js"
   },
   "keywords": [
     "sdlc",
@@ -30,7 +34,8 @@
   "devDependencies": {
     "serve": "^14.2.0",
     "gh-pages": "^6.1.0",
-    "@tauri-apps/cli": "^2.0.0"
+    "@tauri-apps/cli": "^2.0.0",
+    "shx": "^0.3.4"
   },
   "repository": {
     "type": "git",

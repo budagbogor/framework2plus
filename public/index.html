@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
+<script src="./js/ide-intelligence.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1339,7 +1340,7 @@ const ADLC_STEPS = [
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
-const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:'beginner',
+const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:localStorage.getItem('devforge_level') || 'beginner',
   isNative: !!window.__TAURI__,
   workspacePath: localStorage.getItem('df_workspace_path') || 'C:\\DevForgeProjects',
   building: false, buildLogs: (() => {
@@ -1348,8 +1349,23 @@ const S = {mode:null, step:0, answers:{}, generating:false, generated:null, acti
   virtualWorkspace: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_workspace') || '{}'); } catch(e){ return {}; }
   })(), 
+  buildMeta: (() => {
+    try { return Object.assign(defaultBuildMeta(), JSON.parse(localStorage.getItem('devforge_build_meta') || '{}')); } catch(e){ return defaultBuildMeta(); }
+  })(),
+  buildQueue: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_build_queue') || '[]'); } catch(e){ return []; }
+  })(),
   activeFile: null,
   isInstalled: false, isDevRunning: false, activePreviewUrl: null,
+  nativeCommands: {},
+  nativeCommandState: { activeCount: 0, currentLabel: '', lastStatus: 'idle', lastExitCode: null, lastCommandId: null },
+  releasePipeline: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_release_pipeline') || '{"active":false,"steps":[],"currentStep":"","lastResult":"idle"}'); } catch(e){ return {active:false, steps:[], currentStep:'', lastResult:'idle'}; }
+  })(),
+  releaseArtifacts: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_release_artifacts') || '[]'); } catch(e){ return []; }
+  })(),
+  aiProfile: localStorage.getItem('devforge_ai_profile') || 'builder',
   chatHistory: [],
   aiConfig: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
@@ -1362,7 +1378,23 @@ const listen = window.__TAURI__ ? window.__TAURI__.event.listen : null;
 
 if (listen) {
     listen('terminal-output', (event) => {
-        addBuildLog(event.payload, 'info');
+        if (typeof handleNativeTerminalOutput === 'function') {
+            handleNativeTerminalOutput(event.payload);
+            return;
+        }
+        const line = typeof event.payload === 'string' ? event.payload : event?.payload?.line;
+        if (line) addBuildLog(line, 'info');
+    });
+    listen('command-status', (event) => {
+        if (typeof handleNativeCommandStatus === 'function') {
+            handleNativeCommandStatus(event.payload);
+            return;
+        }
+        const payload = event?.payload || {};
+        const message = payload.status
+            ? `Native command ${payload.command_id || ''}: ${payload.status}${payload.exit_code != null ? ` (${payload.exit_code})` : ''}`
+            : 'Native command event received.';
+        addBuildLog(message, payload.status === 'failed' ? 'error' : 'info');
     });
 }
 
@@ -1371,8 +1403,15 @@ function saveWorkspaceToLocal() {
     try {
         localStorage.setItem('devforge_workspace', JSON.stringify(S.virtualWorkspace || {}));
         localStorage.setItem('devforge_logs', JSON.stringify(S.buildLogs || []));
+        localStorage.setItem('devforge_build_meta', JSON.stringify(S.buildMeta || defaultBuildMeta()));
+        localStorage.setItem('devforge_build_queue', JSON.stringify(S.buildQueue || []));
+        localStorage.setItem('devforge_release_pipeline', JSON.stringify(S.releasePipeline || {active:false, steps:[], currentStep:'', lastResult:'idle'}));
+        localStorage.setItem('devforge_release_artifacts', JSON.stringify(S.releaseArtifacts || []));
+        localStorage.setItem('devforge_ai_profile', S.aiProfile || 'builder');
     } catch(e) { console.warn("Gagal menyimpan ke LocalStorage (mungkin data terlalu besar)"); }
 }
+
+// Workspace intelligence, doctor, and auto-fix helpers live in public/js/ide-intelligence.js
 // Defaults for aiConfig
 S.aiConfig = Object.assign({provider:'sumopod', model:'seed-2-0-lite-free', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
 
@@ -1479,21 +1518,15 @@ function getActiveSteps(){
 }
 
 function setLevel(l){
+  if(!['beginner','intermediate','expert'].includes(l)) return;
   S.level=l;
+  try { localStorage.setItem('devforge_level', l); } catch(e){}
   // Surgical update — only toggle .active on level buttons, no full page re-render
   document.querySelectorAll('.level-btn').forEach(btn=>{
     const isActive = btn.getAttribute('data-level')===l;
     btn.classList.toggle('active', isActive);
   });
-  // If currently inside wizard step, re-render just the question body (tech filters change)
-  if(S.mode && !S.generating && !S.generated){
-    const steps=getActiveSteps();
-    const q=steps[S.step];
-    if(q && q.type==='techcard'){
-      const body=document.getElementById('q-body');
-      if(body) body.innerHTML=renderQBody(q);
-    }
-  }
+  if(!S.generating) render();
 }
 function quickStart(name){
   const T={
@@ -1521,12 +1554,6 @@ function getRec(techKey, answers){
 // RENDER
 // ═══════════════════════════════════════════
 const R = document.getElementById('root');
-function render(){
-  if(!S.mode){renderModeSelect();return}
-  if(S.generating){renderGenerating();return}
-  if(S.generated){renderOutput();return}
-  renderWizard();
-}
 
 function renderModeSelect(){
   R.innerHTML=`
@@ -1635,13 +1662,16 @@ function renderQBody(q){
 
   if(q.type==='techcard'){
     let techs=TECH[q.techKey]||[];
-    // filter by level
     if(S.level==='beginner') techs=techs.filter(t=>t.rec!=='adv');
+    if(S.level==='intermediate') techs=techs.filter(t=>!(t.rec==='adv' && /threejs|microservice|privacy/i.test(t.val||'')));
     // auto-recommend based on prior answers
     const recs=smartRecs(q.techKey,S.answers);
     return `
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:500">
         ${q.multi?`Pilih ${q.max||'beberapa'} — klik "Lihat detail" untuk perbandingan`:'Pilih satu'}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+        Level aktif: <strong>${getLevelProfile().label}</strong> — ${getLevelProfile().tone}
       </div>
       <div class="tech-grid">${techs.map((t,i)=>{
         const selArr=Array.isArray(val)?val:[val];
@@ -1824,8 +1854,263 @@ function renderGenerating(){
 // ═══════════════════════════════════════════
 function buildOutput(){return isWebsite()?buildWebsite():isGreen()?buildADLC():isAmber()?buildDesktop():buildSDLC()}
 
+function getLevelProfile(){
+  const profiles = {
+    beginner: {
+      label: 'Pemula',
+      tone: 'fokus pada jalur paling aman, sedikit pilihan, dan setup sesederhana mungkin',
+      website: {
+        stackNote: 'Pilih stack yang cepat jadi dan minim konfigurasi manual.',
+        workflow: 'Gunakan komponen sederhana, hindari arsitektur berlapis, fokus launch cepat.',
+        promptStyle: 'Minta AI bekerja langkah demi langkah dan selalu jelaskan file yang dibuat.'
+      },
+      software: {
+        stackNote: 'Gunakan stack all-in-one dan service managed agar setup backend lebih ringan.',
+        workflow: 'Bangun fitur inti dulu, hindari microservice, queue kompleks, atau optimasi prematur.',
+        promptStyle: 'Minta AI membuat file runnable lengkap dengan instruksi install dan run.'
+      },
+      desktop: {
+        stackNote: 'Utamakan jalur desktop yang paling mudah di-setup dan mudah dipackage.',
+        workflow: 'Mulai dari single-window app, local storage, dan installer standar.',
+        promptStyle: 'Minta AI menghindari fitur multi-window atau IPC kompleks di fase awal.'
+      },
+      adlc: {
+        stackNote: 'Pakai agent single-flow dengan tool minimal dan memori sederhana.',
+        workflow: 'Utamakan prototipe yang bisa diuji cepat sebelum multi-agent atau evaluasi canggih.',
+        promptStyle: 'Minta AI menjaga scope kecil, mudah dijalankan, dan mudah dipahami.'
+      }
+    },
+    intermediate: {
+      label: 'Menengah',
+      tone: 'seimbang antara kecepatan delivery dan struktur project yang sudah rapi',
+      website: {
+        stackNote: 'Pilih stack yang tetap cepat, tetapi sudah siap di-scale dengan CMS dan animasi terukur.',
+        workflow: 'Tambahkan modularisasi, SEO, analytics, dan pipeline deploy yang rapi.',
+        promptStyle: 'Minta AI menjelaskan tradeoff teknis sambil tetap mengutamakan hasil runnable.'
+      },
+      software: {
+        stackNote: 'Gunakan struktur modular dengan test dasar, CI, dan pemisahan service/helper.',
+        workflow: 'Bangun fitur inti plus quality gate minimum: validation, tests, CI, docs.',
+        promptStyle: 'Minta AI menjaga clean architecture ringan tanpa over-engineering.'
+      },
+      desktop: {
+        stackNote: 'Siapkan desktop app modular, command build jelas, dan packaging stabil.',
+        workflow: 'Tambahkan process orchestration, settings, logs, dan packaging yang bisa diulang.',
+        promptStyle: 'Minta AI menjaga IPC/command flow tetap jelas dan testable.'
+      },
+      adlc: {
+        stackNote: 'Gunakan agent dengan memory, tools lebih nyata, dan evaluasi hasil minimum.',
+        workflow: 'Tambahkan observability, retry logic, dan task orchestration yang lebih disiplin.',
+        promptStyle: 'Minta AI membedakan planning, execution, dan review secara eksplisit.'
+      }
+    },
+    expert: {
+      label: 'Mahir',
+      tone: 'maksimalkan kualitas arsitektur, extensibility, reliability, dan production readiness',
+      website: {
+        stackNote: 'Optimalkan arsitektur konten, performance budget, SEO teknis, dan instrumentation.',
+        workflow: 'Tambahkan quality budget, content model, dan release checklist yang matang.',
+        promptStyle: 'Minta AI menjelaskan keputusan arsitektur dan menyiapkan struktur extensible.'
+      },
+      software: {
+        stackNote: 'Gunakan modular architecture lengkap dengan observability, tests, CI, dan release discipline.',
+        workflow: 'Tambahkan review gate, deployment notes, migration strategy, dan hardening production.',
+        promptStyle: 'Minta AI menulis kode production-grade, bukan hanya demo runnable.'
+      },
+      desktop: {
+        stackNote: 'Prioritaskan packaging, process management, observability, dan release engineering.',
+        workflow: 'Tambahkan command lifecycle, release pipeline, auto-update prep, dan artefak distribusi.',
+        promptStyle: 'Minta AI memperlakukan app sebagai product desktop serius, bukan prototype.'
+      },
+      adlc: {
+        stackNote: 'Gunakan agent architecture yang siap evaluasi, review gate, dan orchestrated toolchain.',
+        workflow: 'Tambahkan task planner, review loop, audit trail, dan reliability guardrails.',
+        promptStyle: 'Minta AI memisahkan architect, builder, reviewer, dan release concern dengan tegas.'
+      }
+    }
+  };
+  return profiles[S.level] || profiles.beginner;
+}
+
+function getModeLevelSpec(modeKey){
+  const profile = getLevelProfile();
+  return profile[modeKey] || profile.software;
+}
+
+function getLevelStructureAddon(modeKey){
+  const addons = {
+    beginner: {
+      website: `
+
+Panduan level pemula:
+├── README-STEP-BY-STEP.md      ← Urutan kerja paling aman dari nol sampai deploy
+├── TODO-BEGINNER.md            ← Checklist harian yang bisa dicentang
+└── examples/
+    └── content-sample.md       ← Contoh isi agar tidak bingung mulai dari mana`,
+      software: `
+
+Panduan level pemula:
+├── README-STEP-BY-STEP.md      ← Urutan setup, auth, fitur pertama, lalu deploy
+├── TODO-BEGINNER.md            ← Checklist implementasi inti
+└── examples/
+    └── seed-data.json          ← Contoh data awal untuk development`,
+      desktop: `
+
+Panduan level pemula:
+├── README-STEP-BY-STEP.md      ← Cara run dev, build, dan bundle installer
+├── TODO-BEGINNER.md            ← Checklist packaging dasar
+└── examples/
+    └── window-layout.txt       ← Blueprint layout window awal`,
+      adlc: `
+
+Panduan level pemula:
+├── README-STEP-BY-STEP.md      ← Tahapan bikin agent dari prompt sampai tool pertama
+├── TODO-BEGINNER.md            ← Checklist hard constraints dan evaluasi dasar
+└── examples/
+    └── sample-task.md          ← Contoh task pertama untuk validasi agent`
+    },
+    intermediate: {
+      website: `
+
+Panduan level menengah:
+├── docs/
+│   └── decisions.md            ← Catatan keputusan stack dan tradeoff
+└── tests/
+    └── smoke.spec.ts           ← Smoke test halaman utama`,
+      software: `
+
+Panduan level menengah:
+├── docs/
+│   └── module-map.md           ← Pemetaan fitur dan boundary modul
+└── tests/
+    └── smoke.spec.ts           ← Validasi flow utama`,
+      desktop: `
+
+Panduan level menengah:
+├── docs/
+│   └── release-checklist.md    ← Checklist release internal
+└── tests/
+    └── smoke.spec.ts           ← Smoke test launch app`,
+      adlc: `
+
+Panduan level menengah:
+├── docs/
+│   └── eval-strategy.md        ← Strategi evaluasi dan failure cases
+└── evals/
+    └── smoke-evals.json        ← Dataset evaluasi ringan`
+    },
+    expert: {
+      website: `
+
+Panduan level mahir:
+├── docs/
+│   ├── architecture.md         ← Decision log, boundary, dan perf budget
+│   └── release-runbook.md      ← Incident dan rollback guide
+├── tests/
+│   ├── smoke.spec.ts
+│   └── perf-budget.json
+└── monitoring/
+    └── web-vitals.md           ← Target observability`,
+      software: `
+
+Panduan level mahir:
+├── docs/
+│   ├── architecture.md         ← Modul, dependency rules, ADR
+│   └── release-runbook.md      ← Prosedur release dan rollback
+├── observability/
+│   ├── alerts.md
+│   └── dashboards.md
+└── contracts/
+    └── api-schema.yaml         ← Kontrak API dan validasi`,
+      desktop: `
+
+Panduan level mahir:
+├── docs/
+│   ├── architecture.md         ← Runtime boundary frontend/native
+│   └── release-runbook.md      ← Installer, signing, rollback
+├── observability/
+│   └── command-telemetry.md    ← Logging command dan artifacts
+└── tests/
+    └── release-smoke.spec.ts   ← Smoke test installer`,
+      adlc: `
+
+Panduan level mahir:
+├── docs/
+│   ├── agent-architecture.md   ← Supervisor, sub-agent, escalation rules
+│   └── safety-runbook.md       ← Incident response dan kill-switch
+├── evals/
+│   ├── benchmark-suite.json
+│   └── regression-suite.json
+└── telemetry/
+    └── cost-latency.md         ← Budget, latency, alerting`
+    }
+  };
+  return addons[S.level]?.[modeKey] || '';
+}
+
+function getLevelStarterAddon(modeKey){
+  const snippets = {
+    beginner: {
+      website: `\n\n## Catatan Eksekusi Pemula\n- Mulai dari homepage statis dulu.\n- Integrasi CMS dilakukan setelah layout final.\n- Jangan tambah animasi sebelum mobile layout stabil.`,
+      software: `\n\n## Catatan Eksekusi Pemula\n- Buat auth dan satu fitur inti sampai selesai dulu.\n- Tulis data dummy sebelum integrasi service eksternal.\n- Simpan kompleksitas di satu alur utama lebih dulu.`,
+      desktop: `\n\n## Catatan Eksekusi Pemula\n- Fokus satu window utama dan satu alur data lokal.\n- Installer dibuat setelah app bisa dipakai tanpa error.\n- Hindari multi-window dan auto-update di iterasi pertama.`,
+      adlc: `\n\n# EXECUTION NOTES\n# Mulai dengan satu task sempit, satu tool, dan satu format output.\n# Jangan aktifkan autonomous mode penuh sebelum eval dasar lulus.`
+    },
+    intermediate: {
+      website: `\n\n## Catatan Eksekusi Menengah\n- Pisahkan komponen, data layer, dan konten sejak awal.\n- Tambahkan smoke test sebelum deploy.`,
+      software: `\n\n## Catatan Eksekusi Menengah\n- Gunakan boundary fitur yang jelas.\n- Setiap fitur baru wajib membawa test dan docs singkat.`,
+      desktop: `\n\n## Catatan Eksekusi Menengah\n- Siapkan command dev/build/bundle dari awal.\n- Validasi installer di target OS utama sebelum fitur tambahan.`,
+      adlc: `\n\n# EXECUTION NOTES\n# Pastikan setiap tool punya kontrak input-output.\n# Tambahkan eval smoke sebelum agent diberi task kompleks.`
+    },
+    expert: {
+      website: `\n\n## Catatan Eksekusi Mahir\n- Tegakkan perf budget, cache strategy, dan observability sebelum launch.\n- Treat SEO dan incident rollback sebagai bagian release.`,
+      software: `\n\n## Catatan Eksekusi Mahir\n- Tegakkan dependency rules, observability, dan review gate per sprint.\n- Contract/API schema harus jadi sumber kebenaran antar modul.`,
+      desktop: `\n\n## Catatan Eksekusi Mahir\n- Pisahkan lifecycle native, UI shell, dan release manager.\n- Packaging dianggap selesai hanya jika smoke test installer lulus.`,
+      adlc: `\n\n# EXECUTION NOTES\n# Jalankan benchmark suite, regression suite, dan cost guard sebelum production.\n# Supervisor agent wajib punya escalation path dan kill-switch yang teruji.`
+    }
+  };
+  return snippets[S.level]?.[modeKey] || '';
+}
+
+function getLevelStackAdjustments(modeKey){
+  const adjustments = {
+    beginner: {
+      website: [{cat:'Mode Delivery',name:'Simple Launch Path',why:'Minim integrasi dan cepat tayang',star:'🧭'}],
+      software: [{cat:'Mode Delivery',name:'Single Core Feature First',why:'Fokus ke satu alur utama dulu',star:'🧭'}],
+      desktop: [{cat:'Mode Delivery',name:'Single Window + Local Data',why:'Kurangi risiko integrasi awal',star:'🧭'}],
+      adlc: [{cat:'Agent Scope',name:'Single Agent + 1 Tool',why:'Batasi area gagal saat validasi awal',star:'🧭'}]
+    },
+    intermediate: {
+      website: [{cat:'Quality Gate',name:'Smoke Test + Content Review',why:'Menjaga kualitas tanpa terlalu berat',star:'🧪'}],
+      software: [{cat:'Quality Gate',name:'Feature Test + CI Check',why:'Mulai disiplin delivery yang rapi',star:'🧪'}],
+      desktop: [{cat:'Quality Gate',name:'Release Checklist + Smoke Test',why:'Menjaga kualitas build desktop',star:'🧪'}],
+      adlc: [{cat:'Quality Gate',name:'Smoke Eval + Tool Contract',why:'Agent lebih stabil sebelum scale',star:'🧪'}]
+    },
+    expert: {
+      website: [
+        {cat:'Observability',name:'Web Vitals + Error Tracking',why:'Release siap dipantau',star:'📈'},
+        {cat:'Governance',name:'Perf Budget + Release Runbook',why:'Mencegah regressi saat scale',star:'🛡️'}
+      ],
+      software: [
+        {cat:'Observability',name:'APM + Structured Logging',why:'Monitoring dan diagnosis production',star:'📈'},
+        {cat:'Governance',name:'ADR + API Contract',why:'Menjaga arsitektur tetap disiplin',star:'🛡️'}
+      ],
+      desktop: [
+        {cat:'Observability',name:'Command Telemetry + Artifact Tracking',why:'Packaging dan runtime lebih terukur',star:'📈'},
+        {cat:'Governance',name:'Release Runbook + Smoke Installer',why:'Distribusi Windows lebih aman',star:'🛡️'}
+      ],
+      adlc: [
+        {cat:'Observability',name:'Cost Guard + Latency Tracking',why:'Agent production tidak liar',star:'📈'},
+        {cat:'Governance',name:'Benchmark Suite + Safety Runbook',why:'Perilaku agent tetap terkendali',star:'🛡️'}
+      ]
+    }
+  };
+  return adjustments[S.level]?.[modeKey] || [];
+}
+
 function buildWebsite(){
   const a=S.answers;
+  const levelProfile = getModeLevelSpec('website');
   const name=a.projectName||'My Website';
   const wb=a.webBuilder||'Astro';
   const cms=a.cms||'Markdown';
@@ -1835,7 +2120,7 @@ function buildWebsite(){
   const isAstro=(a.webBuilder||'').includes('astro');
   const typeMap={corporate:'Full Portal / Corporate', landing:'Landing Page', profile:'Company Profile', blog:'Blog / Media', portfolio:'Portfolio', docs:'Documentation'};
   
-  const structure=isAstro?`
+  let structure=isAstro?`
 ${slug(name)}/
 ├── src/
 │   ├── components/         ← Komponen UI statis & interaktif (Astro/React/Vue)
@@ -1855,6 +2140,7 @@ ${slug(name)}/
 ├── index.html
 ├── .env.example            ← Rahasia integrasi CMS
 └── package.json`;
+  structure += getLevelStructureAddon('website');
 
   const stackRecs=[
     {cat:'Web Builder',name:wb,why:'Mesin pembangun utama SEO & interface',star:'⭐'},
@@ -1864,6 +2150,8 @@ ${slug(name)}/
     {cat:'Hosting Statis',name:dep,why:'Deploy global edge sangat cepat',star:'🚀'},
   ];
 
+  stackRecs.push(...getLevelStackAdjustments('website'));
+
   const phases=[
     {num:'01',title:'Desain & Rangka Dasar',tags:['Hari 1-3'],desc:'Bangun UI kerangka HTML/CSS. Konfigurasi grid dan responsivitas layar (Mobile-First).'},
     {num:'02',title:'Integrasi CMS',tags:['Hari 4-6'],desc:`Koneksikan Web Framework dengan ${cms}. Tarik data postingan atau profil dari CMS masuk ke template halaman.`},
@@ -1871,6 +2159,9 @@ ${slug(name)}/
     {num:'04',title:'SEO & Optimasi',tags:['Hari 8-9'],desc:'Setting Google Analytics, OG Image untuk sosial media, dan sitemap generator. Kompres aset gambar (WebP).'},
     {num:'05',title:'Peluncuran Publik',tags:['Hari 10'],desc:`Deploy final secara otomatis ke ${dep} dan *pointing* DNS / Domain.`},
   ];
+  if (S.level === 'expert') {
+    phases.push({num:'06',title:'Performance Budget',tags:['Hari 11'],desc:'Tetapkan performance budget, observability, dan checklist release teknis sebelum go-live.'});
+  }
 
   const prd=`# PRD Website — ${name}
 
@@ -1895,9 +2186,16 @@ ${slug(name)}/
 1. **Kecepatan Tinggi (Core Web Vitals):** LCP (Load Terbesar) wajib di bawah 2 detik. JavaScript seminimal mungkin (Zero-JS bila memungkinkan).
 2. **SEO (Search Engine Optimization):** Mengandung tag meta valid, heading H1-H6 tersusun wajar, canonical URL siap.
 3. **Animasi Terukur:** Menggunakan ${anim} hanya saat scroll masuk pandangan agar performa browser tidak tersendat.
+
+---
+
+## Strategy by Developer Level
+- **Level aktif:** ${getLevelProfile().label}
+- **Stack strategy:** ${levelProfile.stackNote}
+- **Workflow:** ${levelProfile.workflow}
 `;
 
-  const prompts=`# Starter Prompts / Instruksi AI — Pembuatan Website
+  let prompts=`# Starter Prompts / Instruksi AI — Pembuatan Website
 
 ## Prompt 1: Rangka Dasar Framework
 
@@ -1923,13 +2221,19 @@ Buatkan saya:
 \`\`\`
 Setelah komponen dasar jalan, saya perlu membuat logika untuk mengambil ${typeMap[a.webType]||'Postingan'} menggunakan sistem: ${cms}.
 Buatkan barisan \`fetch()\` untuk menyerap data tersebut dan masukkan ke dalam halaman list. Lengkapi juga script setup integrasi form pada ${form}.
-\`\`\``;
+\`\`\`
 
+## Level-Specific Guidance
+- Level aktif: ${getLevelProfile().label}
+- AI guidance: ${levelProfile.promptStyle}`;
+
+  prompts += getLevelStarterAddon('website');
   return {name,mode:'website',structure,stackRecs,phases,prd,prompts,fe:wb,db:cms,scale:'Proses Cepat'};
 }
 
 function buildSDLC(){
   const a=S.answers;
+  const levelProfile = getModeLevelSpec('software');
   const name=a.projectName||'My Project';
   const fe=(a.frontend||[]).join(' + ')||'Next.js';
   const be=(a.backend||[]).join(' + ')||'Node.js';
@@ -1943,7 +2247,7 @@ function buildSDLC(){
   const hasNext=(a.frontend||[]).includes('nextjs');
   const hasSupabase=(a.database||[]).includes('supabase');
 
-  const structure=hasNext?`
+  let structure=hasNext?`
 ${slug(name)}/
 ├── app/                    ← Semua halaman app
 │   ├── (auth)/             ← Halaman login & register
@@ -1998,6 +2302,7 @@ ${slug(name)}/
 ├── .github/workflows/ci.yml
 ├── .env.example
 └── package.json`;
+  structure += getLevelStructureAddon('software');
 
   const stackRecs=[
     {cat:'Frontend',name:fe,why:'Sesuai pilihan kamu',star:'⭐'},
@@ -2010,6 +2315,8 @@ ${slug(name)}/
     {cat:'Testing',name:'Vitest + Playwright',why:'Unit test + E2E test',star:'✅'},
     {cat:'CI/CD',name:'GitHub Actions',why:'Deploy otomatis',star:'⚡'},
   ];
+
+  stackRecs.push(...getLevelStackAdjustments('software'));
 
   const phases=[
     {num:'01',title:'Planning & Setup',tags:['1 minggu'],
@@ -2025,6 +2332,12 @@ ${slug(name)}/
     {num:'06',title:'Iterasi',tags:['Ongoing'],
      desc:'Collect user feedback, analisis data penggunaan, prioritaskan fitur berikutnya berdasarkan impact nyata ke user.'},
   ];
+  if (S.level === 'beginner') {
+    phases.splice(5, 1);
+  }
+  if (S.level === 'expert') {
+    phases.splice(4, 0, {num:'04B',title:'Architecture Review Gate',tags:['Sprint 5'],desc:'Review dependency, import graph, migration plan, observability, dan readiness production sebelum launch.'});
+  }
 
   const prd=`# PRD — ${name}
 
@@ -2102,6 +2415,11 @@ Deploy:   ${dep}
 - **${(a.database||['Supabase'])[0]}** dipilih karena: all-in-one (DB + auth + storage), gratis untuk MVP
 - **${(a.deployment||['Vercel'])[0]}** dipilih karena: deploy otomatis dari GitHub, gratis untuk project awal
 
+### Strategy by Developer Level
+- **Level aktif:** ${getLevelProfile().label}
+- **Stack strategy:** ${levelProfile.stackNote}
+- **Workflow:** ${levelProfile.workflow}
+
 ---
 
 ## Non-Functional Requirements
@@ -2131,7 +2449,7 @@ Deploy:   ${dep}
 - [ ] Tampil baik di mobile dan desktop
 - [ ] Edge cases (data kosong, error state) sudah ditangani`;
 
-  const prompts=`# Starter Prompts untuk AI Coding Assistant
+  let prompts=`# Starter Prompts untuk AI Coding Assistant
 
 Gunakan prompt-prompt ini dengan Claude, ChatGPT, atau Cursor untuk mulai coding lebih cepat.
 
@@ -2243,13 +2561,21 @@ CD (merge ke main):
 2. Deploy ke ${(a.deployment||['Vercel'])[0]}
 
 Tambahkan environment secrets yang dibutuhkan.
-\`\`\``;
+\`\`\`
 
+---
+
+## Level-Specific Guidance
+- Level aktif: ${getLevelProfile().label}
+- AI guidance: ${levelProfile.promptStyle}`;
+
+  prompts += getLevelStarterAddon('software');
   return {name,mode:'sdlc',structure,stackRecs,phases,prd,prompts,scale:scaleMap[scale],fe,be,db,pay};
 }
 
 function buildDesktop(){
   const a=S.answers;
+  const levelProfile = getModeLevelSpec('desktop');
   const name=a.desktopName||'My Desktop App';
   const fw=a.desktopFramework||'electron';
   const db=(a.database||[]).join(' + ')||'SQLite';
@@ -2263,7 +2589,7 @@ function buildDesktop(){
   const isElectron=fw==='electron';
   const isTauri=fw==='tauri';
 
-  const structure=isElectron?`
+  let structure=isElectron?`
 ${slug(name)}/
 ├── src/
 │   ├── main/                    ← Proses utama (Node.js)
@@ -2312,6 +2638,7 @@ ${slug(name)}/
 ├── assets/                     ← Icon, gambar, dll
 ├── tests/
 └── package.json`;
+  structure += getLevelStructureAddon('desktop');
 
   const stackRecs=[
     {cat:'Framework',name:fwName,why:'Engine utama desktop app',star:'⭐'},
@@ -2323,6 +2650,8 @@ ${slug(name)}/
     {cat:'Testing',name:'Vitest + Spectron',why:'Unit + E2E test',star:'✅'},
   ];
 
+  stackRecs.push(...getLevelStackAdjustments('desktop'));
+
   const phases=[
     {num:'01',title:'Planning & Setup',tags:['1 minggu'],desc:'Finalisasi requirements, setup repo, siapkan design system dan icon app.'},
     {num:'02',title:'Fondasi Teknis',tags:['Sprint 1'],desc:`Setup ${fwName} project, konfigurasi ${db}, implementasi layout utama.`},
@@ -2330,16 +2659,22 @@ ${slug(name)}/
     {num:'04',title:'Installer & Polish',tags:['Sprint 4'],desc:`Konfigurasi ${inst}, buat installer untuk ${targetOS}. Test install/uninstall.`},
     {num:'05',title:'Release',tags:['Sprint 5'],desc:'Final testing, code signing, distribusi ke user atau publish ke store.'},
   ];
+  if (S.level === 'expert') {
+    phases.splice(4, 0, {num:'04B',title:'Process Control & Observability',tags:['Sprint 4'],desc:'Tambahkan lifecycle command, release artifacts, log viewer, dan smoke test sebelum distribusi.'});
+  }
 
   const prd=`# PRD Desktop App — ${name}\n\n## Ringkasan\n**Nama:** ${name}\n**Tipe:** ${a.desktopType||'Utility'} (Desktop App)\n**Target OS:** ${targetOS}\n**Framework:** ${fwName}\n**Estimasi:** ${scaleMap[scale]}\n\n---\n\n## Tech Stack\n\\\`\\\`\\\`\nFramework: ${fwName}\nDatabase:  ${db}\nUI:        ${ui}\nInstaller: ${inst}${pay?'\nPayment:   '+pay:''}\n\\\`\\\`\\\`\n\n---\n\n## Fitur (Prioritas)\n\n### Must Have (MVP)\n- [ ] Window utama dengan layout dasar\n- [ ] [Fitur inti 1]\n- [ ] [Fitur inti 2]\n- [ ] Penyimpanan data lokal\n- [ ] System tray integration\n\n### Should Have (v1.1)\n- [ ] Auto-update\n- [ ] Keyboard shortcuts\n- [ ] Settings/preferences\n\n### Nice to Have (v2.0)\n- [ ] Cloud sync\n- [ ] Plugin system\n- [ ] Multi-window support`;
 
-  const prompts=`# Starter Prompts — Desktop App\n\n## Prompt 1: Setup Project\n\n\\\`\\\`\\\`\nSaya mau bangun desktop app: ${name}\n\nTech stack:\n- Framework: ${fwName}\n- Database: ${db}\n- UI: ${ui}\n- Target OS: ${targetOS}\n\nTolong buatkan:\n1. Struktur folder project ${fwName}\n2. package.json / Cargo.toml dengan dependencies\n3. Konfigurasi window utama (ukuran, title, icon)\n4. Setup hot-reload untuk development\n5. Konfigurasi ${inst} untuk distribusi\n\\\`\\\`\\\`\n\n---\n\n## Prompt 2: Build UI Utama\n\n\\\`\\\`\\\`\nBangun UI untuk ${name} menggunakan ${ui}:\n\n1. Layout utama (sidebar + content area)\n2. Title bar custom (jika frameless window)\n3. System tray menu\n4. Settings page\n5. Keyboard shortcuts\n\\\`\\\`\\\`\n\n---\n\n## Prompt 3: Build Installer\n\n\\\`\\\`\\\`\nKonfigurasi ${inst} untuk ${name}:\n\n- Target: ${targetOS}\n- Auto-update mechanism\n- Code signing (jika diperlukan)\n- Buat script npm: "build:win", "build:mac", "build:linux"\n\\\`\\\`\\\``;
+  let prompts=`# Starter Prompts — Desktop App\n\n## Prompt 1: Setup Project\n\n\\\`\\\`\\\`\nSaya mau bangun desktop app: ${name}\n\nTech stack:\n- Framework: ${fwName}\n- Database: ${db}\n- UI: ${ui}\n- Target OS: ${targetOS}\n\nTolong buatkan:\n1. Struktur folder project ${fwName}\n2. package.json / Cargo.toml dengan dependencies\n3. Konfigurasi window utama (ukuran, title, icon)\n4. Setup hot-reload untuk development\n5. Konfigurasi ${inst} untuk distribusi\n\\\`\\\`\\\`\n\n---\n\n## Prompt 2: Build UI Utama\n\n\\\`\\\`\\\`\nBangun UI untuk ${name} menggunakan ${ui}:\n\n1. Layout utama (sidebar + content area)\n2. Title bar custom (jika frameless window)\n3. System tray menu\n4. Settings page\n5. Keyboard shortcuts\n\\\`\\\`\\\`\n\n---\n\n## Prompt 3: Build Installer\n\n\\\`\\\`\\\`\nKonfigurasi ${inst} untuk ${name}:\n\n- Target: ${targetOS}\n- Auto-update mechanism\n- Code signing (jika diperlukan)\n- Buat script npm: "build:win", "build:mac", "build:linux"\n\\\`\\\`\\\``;
 
-  return {name,mode:'desktop',structure,stackRecs,phases,prd,prompts,scale:scaleMap[scale],fw:fwName,db,targetOS,pay};
+  prompts += getLevelStarterAddon('desktop');
+  const desktopLevelNotes = `\n\n---\n\n## Level-Specific Guidance\n- Level aktif: ${getLevelProfile().label}\n- Stack strategy: ${levelProfile.stackNote}\n- Workflow: ${levelProfile.workflow}\n- AI guidance: ${levelProfile.promptStyle}`;
+  return {name,mode:'desktop',structure,stackRecs,phases,prd:`${prd}\n\n### Strategy by Developer Level\n- **Level aktif:** ${getLevelProfile().label}\n- **Stack strategy:** ${levelProfile.stackNote}\n- **Workflow:** ${levelProfile.workflow}`,prompts:`${prompts}${desktopLevelNotes}`,scale:scaleMap[scale],fw:fwName,db,targetOS,pay};
 }
 
 function buildADLC(){
   const a=S.answers;
+  const levelProfile = getModeLevelSpec('adlc');
   const name=a.agentName||'My AI Agent';
   const llm=a.llm||'claude';
   const orch=(a.orchestration||[]).join(' + ')||'LangGraph';
@@ -2352,7 +2687,7 @@ function buildADLC(){
   const hasLangGraph=(a.orchestration||[]).includes('langgraph');
   const hasCrewAI=(a.orchestration||[]).includes('crewai');
 
-  const structure=`
+  let structure=`
 ${slug(name)}/
 │
 ├── agents/                     ← Kode agent utama
@@ -2396,7 +2731,9 @@ ${slug(name)}/
 ├── Dockerfile
 └── README.md`;
 
-  const starterCode=`# ${name} — Starter Agent
+  structure += getLevelStructureAddon('adlc');
+
+  let starterCode=`# ${name} — Starter Agent
 # Gunakan prompt ini di Claude Code atau paste ke file main_agent.py
 
 import anthropic
@@ -2787,13 +3124,23 @@ SOLUSI: [langkah konkret]
 PERUBAHAN_PROMPT: [bagian prompt yang perlu diubah]
 \`\`\``;
 
-  return{name,mode:'adlc',structure,starterCode,masterPlan,sysPrompts,complexity:complexMap[complexity],llm,orch,tools};
+  starterCode += getLevelStarterAddon('adlc');
+  const adlcLevelNotes = `\n\n---\n\n## Level-Specific Guidance\n- Level aktif: ${getLevelProfile().label}\n- Stack strategy: ${levelProfile.stackNote}\n- Workflow: ${levelProfile.workflow}\n- AI guidance: ${levelProfile.promptStyle}`;
+  const stackRecs=[
+    {cat:'Model',name:llmModel,why:'Otak utama agent',star:'⭐'},
+    {cat:'Orchestration',name:orch,why:'Pengatur loop dan state agent',star:'🧠'},
+    {cat:'Memory',name:mem,why:'Penyimpan konteks dan pengetahuan',star:'🗂️'},
+    {cat:'Tools',name:tools,why:'Kemampuan eksekusi agent',star:'🛠️'},
+    {cat:'Deploy',name:dep,why:'Tempat menjalankan agent',star:'🚀'},
+    ...getLevelStackAdjustments('adlc'),
+  ];
+  return{name,mode:'adlc',structure:`${structure}\n\n# Level Strategy\n# ${levelProfile.stackNote}`,stackRecs,starterCode:`${starterCode}\n\n# LEVEL GUIDANCE\n# ${levelProfile.promptStyle}`,masterPlan:`${masterPlan}\n\n## Strategy by Developer Level\n- Level aktif: ${getLevelProfile().label}\n- Workflow: ${levelProfile.workflow}`,sysPrompts:`${sysPrompts}${adlcLevelNotes}`,complexity:complexMap[complexity],llm,orch,tools};
 }
 
 // ═══════════════════════════════════════════
 // RENDER OUTPUT
 // ═══════════════════════════════════════════
-function renderOutput(){
+function legacyRenderOutput(){
   const g=S.generated;
   const isA=g.mode==='adlc';
   const isD=g.mode==='desktop';
@@ -2914,7 +3261,7 @@ function renderOutput(){
   </div>`;
 }
 
-function dlMasterplan() {
+function legacyDlMasterplan() {
   const g = S.generated;
   if(!g) return;
   const isA = g.mode === 'adlc';
@@ -2973,8 +3320,9 @@ function dlMasterplan() {
   document.body.removeChild(a);
 }
 
-async function execTerminalCmd(cmd) {
+async function legacyExecTerminalCmd(cmd) {
     if (S.building) return;
+    const runtime = detectWorkspaceRuntime();
 
     if (Object.keys(S.virtualWorkspace).length === 0) {
         addBuildLog(`Peringatan: Terminal ini adalah simulasi.`, "amber");
@@ -2983,11 +3331,13 @@ async function execTerminalCmd(cmd) {
     
     if (cmd === 'install') {
         if (S.isNative) {
-            addBuildLog(`Running native npm install...`, "agent");
-            invoke('execute_command', { cmd: 'npm', args: ['install'], cwd: S.workspacePath });
+            const parsed = parseCommandLine(runtime.installCommand);
+            if(!parsed){ addBuildLog(`Install command tidak terdeteksi.`, "error"); return; }
+            addBuildLog(`Running native ${runtime.installCommand}...`, "agent");
+            invoke('execute_command', { cmd: parsed.cmd, args: parsed.args, cwd: getNativeProjectRoot() });
         } else {
             S.isInstalled = true;
-            addBuildLog(`npm install`, "agent");
+            addBuildLog(runtime.installCommand || `npm install`, "agent");
             addBuildLog(`[1/4] Resolving packages...`, "info");
             await new Promise(r => setTimeout(r, 800));
             addBuildLog(`[2/4] Fetching packages...`, "info");
@@ -2999,15 +3349,17 @@ async function execTerminalCmd(cmd) {
         }
     } else if (cmd === 'dev') {
         if (S.isNative) {
-            addBuildLog(`Starting native dev server...`, "agent");
-            invoke('execute_command', { cmd: 'npm', args: ['run', 'dev'], cwd: S.workspacePath });
+            const parsed = parseCommandLine(runtime.devCommand);
+            if(!parsed){ addBuildLog(`Dev command belum tersedia untuk workspace ini.`, "error"); return; }
+            addBuildLog(`Starting native dev server with ${runtime.devCommand}...`, "agent");
+            invoke('execute_command', { cmd: parsed.cmd, args: parsed.args, cwd: getNativeProjectRoot() });
         } else if (S.isDevRunning) {
             // ... (rest of dev logic)
         }
         S.isDevRunning = !S.isDevRunning;
         if (S.isDevRunning) {
-            addBuildLog(`npm run dev`, "agent");
-            addBuildLog(`> next dev`, "info");
+            addBuildLog(runtime.devCommand || `npm run dev`, "agent");
+            addBuildLog(`> ${runtime.devCommand || 'dev server'}`, "info");
             addBuildLog(`ready - started server on 0.0.0.0:3001 (VIRTUAL), url: <a href="javascript:void(0)" onclick="openLivePreview()" style="color:var(--accent); text-decoration:underline">http://localhost:3001</a>`, "success");
             addBuildLog(`event - compiled client and server successfully in 1248 ms (169 modules)`, "success");
         } else {
@@ -3019,7 +3371,14 @@ async function execTerminalCmd(cmd) {
             addBuildLog(`Error: Please run 'npm install' first.`, "error");
             return;
         }
-        addBuildLog(`npm run build`, "agent");
+        if (S.isNative) {
+            const parsed = parseCommandLine(runtime.buildCommand);
+            if(!parsed){ addBuildLog(`Build command belum tersedia untuk workspace ini.`, "error"); return; }
+            addBuildLog(`Running native ${runtime.buildCommand}...`, "agent");
+            invoke('execute_command', { cmd: parsed.cmd, args: parsed.args, cwd: getNativeProjectRoot() });
+            return;
+        }
+        addBuildLog(runtime.buildCommand || `npm run build`, "agent");
         addBuildLog(`Creating an optimized production build...`, "info");
         await new Promise(r => setTimeout(r, 2000));
         addBuildLog(`Compiled successfully.`, "success");
@@ -3027,11 +3386,31 @@ async function execTerminalCmd(cmd) {
         addBuildLog(`┌ ○ /                                      5.28 kB        78.1 kB`, "info");
         addBuildLog(`└ λ /api/hello                             0 B            72.8 kB`, "info");
         addBuildLog(`+ First Load JS shared by all              72.8 kB`, "info");
+    } else if (cmd === 'test') {
+        if (!S.isInstalled) {
+            addBuildLog(`Error: Please run 'npm install' first.`, "error");
+            return;
+        }
+        if (S.isNative) {
+            const parsed = parseCommandLine(runtime.testCommand);
+            if(!parsed){ addBuildLog(`Test command belum tersedia untuk workspace ini.`, "error"); return; }
+            addBuildLog(`Running native ${runtime.testCommand}...`, "agent");
+            invoke('execute_command', { cmd: parsed.cmd, args: parsed.args, cwd: getNativeProjectRoot() });
+            return;
+        }
+        if (!runtime.testCommand) {
+            addBuildLog(`Test command belum tersedia untuk workspace ini.`, "error");
+            return;
+        }
+        addBuildLog(runtime.testCommand, "agent");
+        addBuildLog(`Running test suite...`, "info");
+        await new Promise(r => setTimeout(r, 1500));
+        addBuildLog(`No failing tests detected in virtual mode.`, "success");
     }
     render();
 }
 
-async function dlProjectBundle() {
+async function legacyDlProjectBundle() {
   const g = S.generated;
   if(!g || typeof JSZip === 'undefined'){
     alert('JSZip belum termuat. Coba hard-refresh halaman (Shift+F5) dan pastikan koneksi internet aktif.');
@@ -4349,234 +4728,6 @@ File tambahan yang tersedia:
 
 
 
-function setTab(t){S.activeTab=t;render();window.scrollTo(0,0)}
-
-function renderBuilderPanel(){
-    const logs = S.buildLogs.slice(-20).map(l => `
-        <div class="term-line">
-            <span class="term-ts">[${l.time}]</span>
-            <span class="term-msg ${l.type}">${l.msg}</span>
-        </div>
-    `).join('');
-
-    const files = Object.keys(S.virtualWorkspace).map(path => `
-        <div class="file-item ${S.activeFile===path?'active':''}" onclick="viewVirtualFile('${path}')">
-            <span class="file-icon">${path.endsWith('/')?'📁':'📄'}</span>
-            ${path}
-        </div>
-    `).join('');
-
-    if(!S.building && Object.keys(S.virtualWorkspace).length === 0){
-        return `
-            <div class="builder-empty">
-                <div class="builder-empty-icon">🏗️</div>
-                <div class="q-title" style="font-size: 22px">Siap Membangun Aplikasi Nyata?</div>
-                <div class="q-desc" style="max-width: 500px">AI akan mengambil alih peran sebagai <strong>Professional Developer</strong>. Ia akan merancang arsitektur, menulis file kode asli, dan menyiapkan segala kebutuhan teknis secara mandiri.</div>
-                <button class="btn btn-generate ${modeColorClass()} builder-empty-btn" onclick="startAutonomousBuild()">🚀 Mulai Pembangunan Otonom</button>
-            </div>
-        `;
-    }
-
-    return `
-        <div class="builder-grid">
-            <div class="builder-sidebar">
-                <div class="builder-head">
-                    <span class="builder-title">File Explorer</span>
-                    ${!S.building ? `<button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 2px 8px; font-size: 10px; background: var(--green-light); color: var(--green)">📥 Download All</button>` : ''}
-                </div>
-                <div class="file-tree">${files || '<div style="opacity:0.5; font-size:11px; padding:10px">Menunggu file pertama...</div>'}</div>
-            </div>
-            <div class="builder-main">
-                <div class="terminal-header">
-                    <div class="term-dots"><div class="term-dot" style="background:#ff5f56"></div><div class="term-dot" style="background:#ffbd2e"></div><div class="term-dot" style="background:#27c93f"></div></div>
-                    <span style="font-family:var(--mono); font-size:11px; opacity:0.6">Agent Console — ${S.building ? 'Building in progress...' : 'Build Finished'}</span>
-                    ${S.building ? `<div class="agent-active-glow" style="width:8px; height:8px; background:var(--accent); margin-left:auto"></div>` : ''}
-                </div>
-                <div class="term-body" id="buildTerminal">${logs}</div>
-                ${S.activeFile ? `
-                <div class="code-block" style="border:none; border-top:1px solid rgba(255,255,255,0.1); border-radius:0; flex:1; display:flex; flex-direction:column">
-                    <div class="code-header">
-                        <span class="code-lang-tag">${S.activeFile}</span>
-                        <button class="copy-btn" onclick="cpCode('activeCodeCont',this)">Salin Kode</button>
-                    </div>
-                    <pre style="flex:1; max-height:none" id="activeCodeCont">${esc(S.virtualWorkspace[S.activeFile])}</pre>
-                </div>` : ''}
-            </div>
-        </div>
-    `;
-}
-
-async function startAutonomousBuild(){
-    if(!S.aiConfig.enabled || !S.aiConfig.connected){
-        alert("⚠️ AI Settings belum aktif. Silakan hubungkan AI (Puter.js atau OpenRouter) di menu AI Settings terlebih dahulu.");
-        openAIPanel();
-        return;
-    }
-    
-    S.building = true;
-    S.buildLogs = [];
-    S.virtualWorkspace = {};
-    S.activeFile = null;
-    S.activeTab = 'builder';
-    addBuildLog("System initialized. Agentic AI Developer mode: ON.", "info");
-    addBuildLog("World Class architecture standards: APPLIED.", "info");
-    render();
-
-    try {
-        await runAutonomousLoop();
-    } catch(err) {
-        addBuildLog(`CRITICAL ERROR: ${err.message}`, "error");
-        S.building = false;
-        render();
-    }
-}
-
-function addBuildLog(msg, type='info'){
-    const time = new Date().toLocaleTimeString();
-    S.buildLogs.push({time, msg, type});
-    render();
-    const term = document.getElementById('buildTerminal');
-    if(term) term.scrollTop = term.scrollHeight;
-}
-
-function viewVirtualFile(p){
-    S.activeFile = p;
-    render();
-}
-
-async function runAutonomousLoop(){
-    const g = S.generated;
-    const desc = S.answers.projectName + ": " + (S.answers.projectName || '');
-    
-    addBuildLog("Analisis Masterplan dan Phase Files...", "agent");
-    
-    // 1. Initial Planning Phase
-    const systemPrompt = `Kamu adalah SENIOR PROFESSIONAL DEVELOPER AGENT.
-Tugas kamu adalah membangun (coding) aplikasi nyata berdasarkan instruksi.
-Kamu bekerja secara otonom 100%. Kamu yang menentukan arsitektur terbaik, struktur folder terbaik, dan kode berkualitas dunia (World Class).
-Kamu harus menghasilkan isi file kode asli (bukan placeholder).
-
-FORMAT RESPONS:
-Selalu berikan respons dalam JSON valid:
-{
-  "logs": ["pesan log aktivitas kamu"],
-  "files": [
-    {"path": "folder/namafile.ext", "content": "isi kode lengkap file tersebut"}
-  ],
-  "finished": boolean (true jika seluruh project sudah selesai dibangun)
-}`;
-
-    const initialPrompt = `Project: ${g.name}
-Konteks: Ini adalah project ${S.mode === 'website' ? 'Website' : 'Software/Fullstack'}.
-Deskripsi: ${S.answers.projectName}
-Tech Stack: ${g.fe} | ${g.db} | ${g.scale}
-
-MULAI PEMBANGUNAN FASE 1 & 2:
-Buat struktur dasar project (package.json, config, folder src, dsb) dan komponen inti.
-Hasilkan setidaknya 5-10 file awal yang fungsional.`;
-
-    await processBuildStep(systemPrompt, initialPrompt);
-    
-    // 2. Iterative Building (Phase 3 & 4)
-    if (S.building) {
-        addBuildLog("Melanjutkan ke integrasi fitur bisnis dan UI...", "agent");
-        const nextPrompt = `Lanjutkan pembangunan project ${g.name}.
-Fokus pada: Implementasi Halaman UI Utama, Logika Bisnis (CRUD), dan Integrasi Database/API.
-Pastikan semua file saling terhubung dengan benar.`;
-        await processBuildStep(systemPrompt, nextPrompt);
-    }
-
-    // 3. Finalization (Phase 5)
-    if (S.building) {
-        addBuildLog("Finalisasi: Menyiapkan Deployment, Git Config, dan README pro.", "agent");
-        const finalPrompt = `Lanjutkan pembangunan project ${g.name}.
-Fokus pada: README.md profesional, .gitignore, .env.example, dan optimasi akhir.
-Set finished ke true jika semua sudah lengkap.`;
-        await processBuildStep(systemPrompt, finalPrompt);
-    }
-
-    S.building = false;
-    addBuildLog("PEMBANGUNAN SELESAI. Project siap diunduh.", "success");
-    render();
-}
-
-async function processBuildStep(system, user){
-    const prov = AI_PROVIDERS[S.aiConfig.provider];
-    const body = {
-        model: S.aiConfig.model,
-        messages: [{role:'system', content:system}, {role:'user', content:user}],
-        response_format: {type: 'json_object'}
-    };
-
-    let res;
-    if (S.aiConfig.provider === 'puter') {
-        const combined = `${system}\n\n${user}`;
-        const resp = await puter.ai.chat(combined, {model: S.aiConfig.model});
-        res = { ok: true, json: async () => {
-            let content = resp.toString();
-            try { return JSON.parse(content); } catch(e) {
-                const match = content.match(/\{[\s\S]*\}/);
-                return JSON.parse(match ? match[0] : '{}');
-            }
-        }};
-    } else {
-        const url = S.aiConfig.useProxy ? '/api/ai-proxy' : `${prov.baseUrl}/chat/completions`;
-        const headers = { 'Content-Type': 'application/json' };
-        if(!S.aiConfig.useProxy) headers['Authorization'] = `Bearer ${S.aiConfig.apiKey}`;
-        
-        const fetchBody = S.aiConfig.useProxy ? {
-            provider: S.aiConfig.provider,
-            apiUrl: `${prov.baseUrl}/chat/completions`,
-            apiKey: S.aiConfig.apiKey,
-            payload: body
-        } : body;
-
-        res = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(fetchBody)
-        });
-    }
-
-    if(res.ok){
-        const data = await res.json();
-        const result = data.choices ? JSON.parse(data.choices[0].message.content) : data;
-        
-        (result.logs || []).forEach(l => addBuildLog(l, "info"));
-        (result.files || []).forEach(f => {
-            S.virtualWorkspace[f.path] = f.content;
-            addBuildLog(`File created: ${f.path}`, "success");
-            if(!S.activeFile) S.activeFile = f.path;
-        });
-        
-        if(result.finished) S.building = false;
-    } else {
-        throw new Error("Gagal berkomunikasi dengan AI.");
-    }
-}
-
-async function downloadVirtualProject(){
-    const zip = new JSZip();
-    const folder = zip.folder(slug(S.generated.name));
-    
-    // Add virtual source files
-    for(const [path, content] of Object.entries(S.virtualWorkspace)){
-        folder.file(path, content);
-    }
-    
-    // Add existing MD files from original generate
-    // (We would need to store them in S.generated_md_files, but for now we'll just download the workspace)
-    
-    const blob = await zip.generateAsync({type:'blob'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `SOURCE-${slug(S.generated.name)}.zip`;
-    link.click();
-}
-
-function setTab(t){S.activeTab=t;render();window.scrollTo(0,0)}
-
-function restart(){Object.assign(S,{mode:null,step:0,answers:{},generating:false,generated:null,activeTab:null, building:false, buildLogs:[], virtualWorkspace:{}, activeFile:null});render();window.scrollTo(0,0)}
 
 function cpCode(id,btn){
   const el=document.getElementById(id);
@@ -4944,6 +5095,44 @@ function closeMobileMenu(){
   document.getElementById('hamburgerBtn')?.classList.remove('active');
 }
 
+function runInlineActionBridge(code, element, event){
+  if(!code) return;
+  try{
+    const exec = new Function('event', 'element', `
+      with (window) {
+        return (function(){
+          ${code}
+        }).call(element);
+      }
+    `);
+    return exec(event, element);
+  }catch(err){
+    console.error('inline action bridge failed', code, err);
+  }
+}
+
+function installNativeActionBridge(){
+  if(!window.__TAURI__ || window.__nativeActionBridgeInstalled) return;
+  window.__nativeActionBridgeInstalled = true;
+
+  document.addEventListener('click', (event) => {
+    const el = event.target.closest('[onclick]');
+    if(!el) return;
+    const code = el.getAttribute('onclick');
+    if(!code) return;
+    event.preventDefault();
+    runInlineActionBridge(code, el, event);
+  }, true);
+
+  document.addEventListener('keydown', (event) => {
+    const el = event.target.closest('[onkeydown]');
+    if(!el) return;
+    const code = el.getAttribute('onkeydown');
+    if(!code) return;
+    runInlineActionBridge(code, el, event);
+  }, true);
+}
+
 document.addEventListener('click', (e) => {
   const nav = document.getElementById('mobileNav');
   const hmb = document.getElementById('hamburgerBtn');
@@ -4952,366 +5141,13 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function renderBuilderPanel(){
-    const logs = (S.buildLogs || []).map(l => `
-        <div class="term-line">
-            <span class="term-ts">[${l.time}]</span>
-            <span class="term-msg ${l.type}">${l.msg}</span>
-        </div>
-    `).join('');
-
-    const files = Object.keys(S.virtualWorkspace || {}).map(path => `
-        <div class="file-item ${S.activeFile===path?'active':''}" onclick="viewVirtualFile('${path}')">
-            <span>${path.endsWith('.md')?'📘':path.includes('.')?'📄':'📁'}</span>
-            ${path}
-        </div>
-    `).join('');
-
-    const gClass = (S.mode === 'website') ? 'pink' : (S.mode === 'adlc') ? 'green' : (S.mode === 'desktop') ? 'amber' : '';
-
-    if(!S.building && Object.keys(S.virtualWorkspace || {}).length === 0){
-        return `
-            <div class="builder-empty">
-                <div class="builder-empty-icon">🏗️</div>
-                <div class="q-title" style="font-size: 28px; background: linear-gradient(90deg, #fff, #00f0ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Autonomous Professional Developer</div>
-                <div class="q-desc" style="max-width: 600px; margin-top: 20px; font-size: 16px; opacity: 0.8;">Platform ini akan mengambil alih peran sebagai <strong>Senior Developer</strong>. Ia akan merancang arsitektur, mendesain basis data, dan menulis kode siap produksi secara otonom 100%.</div>
-                <button class="btn btn-generate ${gClass} builder-empty-btn" onclick="startAutonomousBuild()">🚀 Mulai Pembangunan Otonom</button>
-            </div>
-        `;
-    }
-
-    return `
-        <div class="builder-grid">
-            <div class="builder-sidebar">
-                <div class="builder-head">
-                    <span class="builder-title">Explorer ${S.isNative ? '🏠' : '☁️'}</span>
-                    ${!S.building ? `<button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 6px 12px; font-size: 11px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.2); border-radius: 8px;">📥 Export</button>` : ''}
-                </div>
-                ${S.isNative ? `<div style="padding:10px; font-size:10px; opacity:0.6; border-bottom:1px solid rgba(255,255,255,0.05)">Path: ${S.workspacePath}</div>` : ''}
-                <div class="file-tree">${files || '<div style="opacity:0.3; font-size:11px; padding:20px; text-align:center;">Menyiapkan workspace...</div>'}</div>
-            </div>
-            <div class="builder-main">
-                <div class="workflow-steps">
-                    <div class="step-item ${Object.keys(S.virtualWorkspace).length > 0 ? 'done' : (S.building ? 'active' : 'active')}">
-                        <div class="step-num">${Object.keys(S.virtualWorkspace).length > 0 ? '✓' : '1'}</div>
-                        <div class="step-text">BUILD CODE</div>
-                    </div>
-                    <div class="step-item ${S.isDevRunning ? 'done' : (Object.keys(S.virtualWorkspace).length > 0 ? 'active' : '')}">
-                        <div class="step-num">${S.isDevRunning ? '✓' : '2'}</div>
-                        <div class="step-text">START DEV</div>
-                    </div>
-                    <div class="step-item ${Object.keys(S.virtualWorkspace).length > 0 ? 'active' : ''}">
-                        <div class="step-num">3</div>
-                        <div class="step-text">PREVIEW</div>
-                    </div>
-                </div>
-                <div class="terminal-panel" style="background: #010409; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; min-height: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-                    <div class="terminal-header" style="background: rgba(255, 255, 255, 0.03); padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-                        <div class="term-dots" style="display: flex; gap: 6px;"><div style="width: 11px; height: 11px; border-radius: 50%; background:#ff5f56"></div><div style="width: 11px; height: 11px; border-radius: 50%; background:#ffbd2e"></div><div style="width: 11px; height: 11px; border-radius: 50%; background:#27c93f"></div></div>
-                        <span style="font-family:var(--mono); font-size:11px; opacity:0.5; letter-spacing: 0.1em; margin-left:10px">AGENT CONSOLE — ${S.building ? 'ACTIVE' : 'READY'}</span>
-                        ${S.building ? `<div class="agent-active-glow" style="width:8px; height:8px; background:#00f0ff; margin-left:auto; border-radius:50%; box-shadow: 0 0 15px #00f0ff;"></div>` : ''}
-                    </div>
-                    <div class="term-toolbar">
-                        <button class="term-btn ${S.isInstalled?'active':''}" onclick="execTerminalCmd('install')">📦 install</button>
-                        <button class="term-btn ${S.isDevRunning?'active':''}" onclick="execTerminalCmd('dev')">🚀 dev</button>
-                        <button class="term-btn" onclick="execTerminalCmd('build')">🏗️ build</button>
-                        <button class="term-btn preview-btn" onclick="openLivePreview()">🌐 Preview</button>
-                    </div>
-                    <div class="term-body" id="buildTerminal" style="flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:13px; line-height:1.6; color: rgba(255,255,255,0.85);">${logs || '<div style="opacity:0.3">Waiting for logs...</div>'}</div>
-                </div>
-                
-                <div class="chat-container">
-                    <div class="chat-input-row">
-                        <input type="text" id="agentChatInput" class="chat-input-field" placeholder="Minta revisi atau tambah fitur... (Contoh: 'Tambahkan halaman login')" onkeydown="if(event.key==='Enter') submitAgentChat()">
-                        <button class="chat-send-btn" onclick="submitAgentChat()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                        </button>
-                    </div>
-                </div>
-
-                ${S.activeFile ? `
-                <div class="code-block" style="border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; background: #010409; margin-top:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-                    <div class="code-header" style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background: rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05)">
-                        <span style="font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.1em; text-transform:uppercase">${S.activeFile}</span>
-                        <button class="copy-btn" onclick="cpCode('activeCodeCont',this)">Salin Kode</button>
-                    </div>
-                    <pre style="flex:1; max-height:none; overflow:auto; padding: 24px; font-size: 14px; color: #e6edf3; line-height: 1.6;" id="activeCodeCont">${esc(S.virtualWorkspace[S.activeFile])}</pre>
-                </div>` : ''}
-            </div>
-        </div>
-    `;
-}
-
-async function startAutonomousBuild(){
-    if(!S.aiConfig.enabled || !S.aiConfig.connected){
-        alert("⚠️ AI Settings belum aktif. Silakan hubungkan AI (Puter.js atau OpenRouter) terlebih dahulu.");
-        openAIPanel();
-        return;
-    }
-    
-    S.building = true;
-    S.buildLogs = [];
-    S.virtualWorkspace = {};
-    S.activeFile = null;
-    S.activeTab = 'builder';
-    addBuildLog("SUPREME SYSTEM INITIALIZED. AUTHORIZING PROFESSIONAL AGENT...", "info");
-    addBuildLog("WORLD-CLASS DESIGN SYSTEM: APPLIED.", "info");
-    render();
-
-    try {
-        await runAutonomousLoop();
-    } catch(err) {
-        addBuildLog(`CRITICAL ERROR: ${err.message}`, "error");
-        S.building = false;
-        render();
-    }
-}
-
-function addBuildLog(msg, type='info'){
-    const time = new Date().toLocaleTimeString();
-    S.buildLogs.push({time, msg, type});
-    saveWorkspaceToLocal();
-    render();
-    setTimeout(() => {
-        const term = document.getElementById('buildTerminal');
-        if(term) term.scrollTop = term.scrollHeight;
-    }, 50);
-}
-
-function viewVirtualFile(p){
-    S.activeFile = p;
-    render();
-}
-
-async function submitAgentChat() {
-    const input = document.getElementById('agentChatInput');
-    const msg = input.value.trim();
-    if (!msg || S.building) return;
-
-    input.value = '';
-    addBuildLog(`USER: ${msg}`, 'agent');
-    
-    S.building = true;
-    render();
-
-    try {
-        const workspaceFiles = Object.keys(S.virtualWorkspace).join(", ");
-        const masterplan = S.virtualWorkspace['MASTERPLAN.md'] || "Belum ada masterplan.";
-        
-        const systemPrompt = `Kamu adalah SENIOR FULLSTACK DEVELOPER.
-Tugas: Melakukan REVISI atau PENAMBAHAN FITUR berdasarkan permintaan USER.
-Konteks Workspace: [${workspaceFiles}]
-Isi MASTERPLAN.md Saat Ini:
-${masterplan}
-
-ATURAN:
-1. Jika user meminta revisi, perbarui file yang ada atau buat file baru.
-2. JANGAN menghapus file yang tidak terkait dengan revisi.
-3. Tetap gunakan format JSON yang konsisten.
-4. Update MASTERPLAN.md jika ada perubahan arsitektur besar.
-5. DILARANG menggunakan atribut 'integrity' pada tag <link> atau <script> untuk library eksternal (seperti FontAwesome, Google Fonts, dll) karena sering menyebabkan error pemblokiran di browser.
-
-FORMAT RESPONS (Valid JSON):
-{
-  "logs": ["Status revisi"],
-  "files": [
-    {"path": "file/diperbarui.ext", "content": "kode baru"}
-  ],
-  "finished": true
-}`;
-
-        const userPrompt = `USER REQUEST: "${msg}"
-Lakukan perubahan yang diperlukan agar hasil sesuai dengan permintaan user di atas.`;
-
-        await processBuildStep(systemPrompt, userPrompt);
-        addBuildLog("REVISION COMPLETED SUCCESSFULLY.", "success");
-    } catch (err) {
-        addBuildLog(`REVISION ERROR: ${err.message}`, "error");
-    } finally {
-        S.building = false;
-        render();
-    }
-}
-
-async function runAutonomousLoop(){
-    const g = S.generated;
-    let iteration = 0;
-    const maxIterations = 15;
-    
-    addBuildLog("PHASE 0: MANUFACTURING ARCHITECTURAL BLUEPRINT...", "agent");
-    
-    const blueprintPrompt = `Role: SENIOR SYSTEM ARCHITECT.
-Project: ${g.name} (${S.mode})
-Description: ${S.answers.projectName}
-Tech Stack: ${g.fe || g.fw || ''} | ${g.be || ''} | ${g.db || ''}
-
-TUGAS: Buat file MASTERPLAN.md dan TECH_NOTES.md sangat detail.
-Masterplan harus mencakup daftar semua file yang akan kita bangun agar aplikasi 100% fungsional hingga siap DEPLOY.
-Tech Notes harus mencakup panduan deployment (Vercel/Docker).
-
-FORMAT RESPONS (Valid JSON):
-{
-  "logs": ["Designing architecture...", "Planning deployment strategy..."],
-  "files": [
-    {"path": "MASTERPLAN.md", "content": "..."},
-    {"path": "TECH_NOTES.md", "content": "..."}
-  ]
-}`;
-    
-    await processBuildStep("Kamu adalah SENIOR SYSTEM ARCHITECT.", blueprintPrompt);
-    addBuildLog("ARCHITECTURE ESTABLISHED. STARTING RECURSIVE BUILD LOOP.", "success");
-
-    while(S.building && iteration < maxIterations){
-        iteration++;
-        const currentFiles = Object.keys(S.virtualWorkspace).join(", ");
-        
-        const systemPrompt = `Kamu adalah SENIOR PROFESSIONAL DEVELOPER AGENT.
-Bekerja secara otonom 100% sampai aplikasi SELESAI dan SIAP DEPLOY.
-Konteks Workspace: [${currentFiles}]
-
-ATURAN:
-1. JANGAN berhenti sampai semua fitur di MASTERPLAN.md terimplementasi.
-2. Tulis kode nyata, lengkap, fungsional, dan modular.
-3. Di iterasi terakhir, wajib sertakan file konfigurasi deployment (misal vercel.json).
-4. SET finished: true HANYA jika project sudah 100% tuntas.
-5. DILARANG menggunakan atribut 'integrity' pada tag <link> atau <script> untuk library eksternal (seperti FontAwesome, Google Fonts, dll) karena sering menyebabkan error pemblokiran di browser.
-
-FORMAT RESPONS (Valid JSON):
-{
-  "logs": ["Status koding iterasi ini"],
-  "files": [
-    {"path": "folder/nama.ext", "content": "isi kode"}
-  ],
-  "finished": boolean
-}`;
-
-        const userPrompt = `Iterasi #${iteration}: Lanjutkan pembangunan proyek ${g.name}.
-Lihat MASTERPLAN.md dan bangun modul/file berikutnya yang belum ada.
-Pastikan semua file saling terhubung (imports) dengan sempurna.`;
-
-        addBuildLog(`ITERATION #${iteration} IN PROGRESS...`, "info");
-        await processBuildStep(systemPrompt, userPrompt);
-        
-        if (!S.building) break;
-    }
-
-    S.building = false;
-    addBuildLog("🚀 100% COMPLETION REACHED. THE SYSTEM IS READY FOR DEPLOYMENT.", "success");
-    addBuildLog("Final Steps: Download source, run 'npm install', then 'npm run dev' or 'vercel deploy'.", "agent");
-    render();
-}
-
-async function processBuildStep(system, user){
-    const prov = AI_PROVIDERS[S.aiConfig.provider];
-    const body = {
-        model: S.aiConfig.model,
-        messages: [{role:'system', content:system}, {role:'user', content:user}],
-        response_format: {type: 'json_object'}
-    };
-
-    let res;
-    if (S.aiConfig.provider === 'puter') {
-        const combined = `${system}\n\n${user}`;
-        const resp = await puter.ai.chat(combined, {model: S.aiConfig.model});
-        res = { ok: true, json: async () => {
-            let content = resp.toString().replace(/```json/g, '').replace(/```/g, '').trim();
-            try { return JSON.parse(content); } catch(e) {
-                const match = content.match(/\{[\s\S]*\}/);
-                return JSON.parse(match ? match[0] : '{}');
-            }
-        }};
-    } else {
-        const url = S.aiConfig.useProxy ? '/api/ai-proxy' : `${prov.baseUrl}/chat/completions`;
-        const headers = { 'Content-Type': 'application/json' };
-        if(!S.aiConfig.useProxy) headers['Authorization'] = `Bearer ${S.aiConfig.apiKey}`;
-        
-        const fetchBody = S.aiConfig.useProxy ? {
-            provider: S.aiConfig.provider,
-            apiUrl: `${prov.baseUrl}/chat/completions`,
-            apiKey: S.aiConfig.apiKey,
-            payload: body
-        } : body;
-
-        res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(fetchBody) });
-    }
-
-    if(res.ok){
-        const data = await res.json();
-        let result = {};
-        const rawContent = data.choices ? data.choices[0].message.content : (data.content || data);
-        let clean = typeof rawContent === 'string' ? rawContent.replace(/```json/g, '').replace(/```/g, '').trim() : rawContent;
-        
-        try {
-            result = typeof clean === 'string' ? JSON.parse(clean) : clean;
-        } catch(e) {
-            console.warn("Standard JSON parse failed, attempting deep clean...", e);
-            try {
-                const match = clean.match(/\{[\s\S]*\}/);
-                if(match){
-                    let deepClean = match[0]
-                        .replace(/\\n/g, "\\n")
-                        .replace(/\\'/g, "'")
-                        .replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // Remove control characters
-                    result = JSON.parse(deepClean);
-                } else { throw e; }
-            } catch(e2) {
-                addBuildLog("AI Response Corrupted. Retrying internal parsing...", "error");
-                result = { logs: ["Error parsing AI response"], files: [], finished: false };
-            }
-        }
-        
-        (result.logs || []).forEach(l => addBuildLog(l, "info"));
-        (result.files || []).forEach(f => {
-            const fullPath = S.isNative ? `${S.workspacePath}/${S.generated.name}/${f.path}` : f.path;
-            S.virtualWorkspace[f.path] = f.content;
-            
-            if (S.isNative && invoke) {
-                invoke('save_file', { path: fullPath, content: f.content });
-            }
-            
-            addBuildLog(`Manufacturing module: ${f.path}`, "success");
-            if(!S.activeFile) S.activeFile = f.path;
-        });
-        saveWorkspaceToLocal();
-        
-        if(result.finished) S.building = false;
-        render();
-    } else {
-        throw new Error("Gagal berkomunikasi dengan AI.");
-    }
-}
-
-async function downloadVirtualProject(){
-    const zip = new JSZip();
-    const folderName = slug(S.generated.name);
-    const root = zip.folder(folderName);
-    
-    addBuildLog("PACKAGING SOURCE FOR PRODUCTION...", "info");
-    
-    for(const [path, content] of Object.entries(S.virtualWorkspace)){
-        if(path.endsWith('.md') && (path.includes('MASTERPLAN') || path.includes('TECH_NOTES'))){
-            root.file(`DOCS/${path}`, content);
-        } else {
-            root.file(path, content);
-        }
-    }
-    
-    const blob = await zip.generateAsync({type:'blob'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `PRO-SOURCE-${folderName}.zip`;
-    link.click();
-    addBuildLog("DOWNLOAD STARTED. YOUR PROFESSIONAL CODE BASE IS READY.", "success");
-}
-
-function restart(){
-    localStorage.removeItem('devforge_logs');
-    localStorage.removeItem('devforge_workspace');
-    Object.assign(S,{mode:null,step:0,answers:{},generating:false,generated:null,activeTab:null, building:false, buildLogs:[], virtualWorkspace:{}, activeFile:null});
-    render();
-    window.scrollTo(0,0);
-}
-
+installNativeActionBridge();
+</script>
+<script src="./js/ide-terminal.js"></script>
+<script src="./js/ide-agent.js"></script>
+<script src="./js/ide-builder-ui.js"></script>
+<script src="./js/ide-shell-ui.js"></script>
+<script>
 render();
 </script>
 
@@ -5320,3 +5156,4 @@ render();
   </footer>
 </body>
 </html>
+

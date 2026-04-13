@@ -18,12 +18,10 @@
       "allow": [{ "path": "**" }]
     },
     {
-      "identifier": "fs:allow-create-dir",
+      "identifier": "fs:allow-mkdir",
       "allow": [{ "path": "**" }]
     },
     "fs:default",
-    "dialog:default",
-    "allow-save-file",
-    "allow-execute-command"
+    "dialog:default"
   ]
 }
