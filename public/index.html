@@ -5095,34 +5095,116 @@ function closeMobileMenu(){
   document.getElementById('hamburgerBtn')?.classList.remove('active');
 }
 
+function splitInlineStatements(code){
+  const parts = [];
+  let current = '';
+  let quote = null;
+  for(let i = 0; i < code.length; i++){
+    const ch = code[i];
+    const prev = code[i - 1];
+    if((ch === "'" || ch === '"') && prev !== '\\'){
+      if(quote === ch) quote = null;
+      else if(!quote) quote = ch;
+    }
+    if(ch === ';' && !quote){
+      if(current.trim()) parts.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if(current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+function splitInlineArgs(raw){
+  const parts = [];
+  let current = '';
+  let quote = null;
+  for(let i = 0; i < raw.length; i++){
+    const ch = raw[i];
+    const prev = raw[i - 1];
+    if((ch === "'" || ch === '"') && prev !== '\\'){
+      if(quote === ch) quote = null;
+      else if(!quote) quote = ch;
+    }
+    if(ch === ',' && !quote){
+      if(current.trim()) parts.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if(current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+function decodeInlineArg(raw, element, event){
+  const value = String(raw || '').trim();
+  if(value === 'this') return element;
+  if(value === 'event') return event;
+  if(/^['"].*['"]$/.test(value)){
+    return value.slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"');
+  }
+  if(/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+  if(value === 'true') return true;
+  if(value === 'false') return false;
+  return value;
+}
+
+function runInlineStatement(statement, element, event){
+  const stmt = String(statement || '').trim();
+  if(!stmt) return;
+
+  if(stmt === 'S.step=0'){
+    S.step = 0;
+    return;
+  }
+  if(stmt === 'render()'){
+    render();
+    return;
+  }
+  if(stmt === "if(event.key==='Enter') submitAgentChat()" || stmt === 'if(event.key==="Enter") submitAgentChat()'){
+    if(event?.key === 'Enter') submitAgentChat();
+    return;
+  }
+
+  const match = stmt.match(/^([A-Za-z_$][\w$]*)\((.*)\)$/);
+  if(!match) return;
+
+  const fnName = match[1];
+  const fn = window[fnName];
+  if(typeof fn !== 'function') return;
+
+  const args = splitInlineArgs(match[2]).map(arg => decodeInlineArg(arg, element, event));
+  return fn(...args);
+}
+
 function runInlineActionBridge(code, element, event){
   if(!code) return;
   try{
-    const exec = new Function('event', 'element', `
-      with (window) {
-        return (function(){
-          ${code}
-        }).call(element);
-      }
-    `);
-    return exec(event, element);
+    splitInlineStatements(code).forEach(statement => runInlineStatement(statement, element, event));
   }catch(err){
     console.error('inline action bridge failed', code, err);
   }
 }
 
 function installNativeActionBridge(){
-  if(!window.__TAURI__ || window.__nativeActionBridgeInstalled) return;
+  if(window.__nativeActionBridgeInstalled) return;
   window.__nativeActionBridgeInstalled = true;
 
-  document.addEventListener('click', (event) => {
+  const handleInlineClick = (event) => {
     const el = event.target.closest('[onclick]');
     if(!el) return;
     const code = el.getAttribute('onclick');
     if(!code) return;
     event.preventDefault();
+    event.stopPropagation();
     runInlineActionBridge(code, el, event);
-  }, true);
+  };
+
+  document.addEventListener('click', handleInlineClick, true);
+  document.addEventListener('pointerup', handleInlineClick, true);
 
   document.addEventListener('keydown', (event) => {
     const el = event.target.closest('[onkeydown]');
