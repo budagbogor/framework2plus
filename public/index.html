@@ -1340,8 +1340,13 @@ const ADLC_STEPS = [
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
+const tauriGlobal = window.__TAURI__ || null;
+const tauriInternals = window.__TAURI_INTERNALS__ || null;
+const nativeInvoke = tauriGlobal?.core?.invoke || tauriInternals?.invoke || null;
+const nativeListen = tauriGlobal?.event?.listen || null;
+
 const S = {mode:null, step:0, answers:{}, generating:false, generated:null, activeTab:null, level:localStorage.getItem('devforge_level') || 'beginner',
-  isNative: !!window.__TAURI__,
+  isNative: !!(tauriGlobal || tauriInternals || navigator.userAgent.includes('Tauri')),
   workspacePath: localStorage.getItem('df_workspace_path') || 'C:\\DevForgeProjects',
   building: false, buildLogs: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_logs') || '[]'); } catch(e){ return []; }
@@ -1369,12 +1374,15 @@ const S = {mode:null, step:0, answers:{}, generating:false, generated:null, acti
   chatHistory: [],
   aiConfig: (() => {
     try { return JSON.parse(localStorage.getItem('devforge_ai') || '{}'); } catch(e){ return {}; }
+  })(),
+  aiProviderOverrides: (() => {
+    try { return JSON.parse(localStorage.getItem('devforge_ai_provider_overrides') || '{}'); } catch(e){ return {}; }
   })()
 };
 
 // Tauri Bridge
-const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null;
-const listen = window.__TAURI__ ? window.__TAURI__.event.listen : null;
+const invoke = nativeInvoke;
+const listen = nativeListen;
 
 if (listen) {
     listen('terminal-output', (event) => {
@@ -1413,7 +1421,7 @@ function saveWorkspaceToLocal() {
 
 // Workspace intelligence, doctor, and auto-fix helpers live in public/js/ide-intelligence.js
 // Defaults for aiConfig
-S.aiConfig = Object.assign({provider:'sumopod', model:'seed-2-0-lite-free', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
+S.aiConfig = Object.assign({provider:'sumopod', model:'deepseek-v3-2-251201', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
 
 // ═══════════════════════════════════════════
 // AI PROVIDER DATA
@@ -1422,9 +1430,10 @@ const AI_PROVIDERS = {
   sumopod: {
     name: 'SumoPod',
     baseUrl: 'https://ai.sumopod.com/v1',
-    keyPlaceholder: 'sp-xxxxxxxxxxxxxxxxxxxxxxxx',
+    keyPlaceholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx',
     docsUrl: 'https://sumopod.com/dashboard/ai/quickstart',
     models: [
+      {id:'deepseek-v3-2-251201', label:'DeepSeek V3.2 251201 (REKOMENDASI)', provider:'byteplus', free:false},
       {id:'seed-2-0-lite-free',  label:'Seed 2.0 Lite (GRATIS)',     provider:'byteplus', free:true},
       {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:true},
       {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
@@ -1439,7 +1448,7 @@ const AI_PROVIDERS = {
       {id:'glm-4-7',             label:'GLM-4-7',                     provider:'byteplus', free:false},
       {id:'seed-1-8',            label:'Seed 1.8',                    provider:'byteplus', free:false},
       {id:'gemini/gemini-2.0-flash',       label:'Gemini 2.0 Flash',          provider:'google',   free:false},
-      {id:'gemini/gemini-2.0-flash-lite',  label:'Gemini 2.0 Flash Lite',     provider:'google',   free:false},
+      {id:'gemini/gemini-2.0-flash-lite',  label:'Gemini 2.0 Flash Lite (cek akses model)', provider:'google',   free:false},
       {id:'gemini/gemini-2.5-flash',       label:'Gemini 2.5 Flash',          provider:'google',   free:false},
       {id:'gemini/gemini-2.5-pro',         label:'Gemini 2.5 Pro',            provider:'google',   free:false},
       {id:'gemini/gemini-3-flash-preview', label:'Gemini 3 Flash (Preview)',   provider:'google',   free:false},
@@ -1498,6 +1507,117 @@ const AI_PROVIDERS = {
     ]
   }
 };
+
+function getProviderConfig(providerKey){
+  const base = AI_PROVIDERS[providerKey];
+  const override = S.aiProviderOverrides?.[providerKey];
+  if(!base) return null;
+  if(!override) return base;
+  return Object.assign({}, base, override, {
+    models: Array.isArray(override.models) && override.models.length ? override.models : base.models
+  });
+}
+
+function getProviderModels(providerKey){
+  return getProviderConfig(providerKey)?.models || [];
+}
+
+function persistAIProviderOverrides(){
+  try {
+    localStorage.setItem('devforge_ai_provider_overrides', JSON.stringify(S.aiProviderOverrides || {}));
+  } catch(e){}
+}
+
+function normalizeImportedModel(model){
+  if(!model || !model.id) return null;
+  const id = String(model.id).trim();
+  if(!id) return null;
+  return {
+    id,
+    label: String(model.label || id).trim(),
+    provider: String(model.provider || 'unknown').trim(),
+    free: !!model.free
+  };
+}
+
+function parseSumoPodModelsFromHtml(html){
+  const rows = [...String(html || '').matchAll(/<tr[\s\S]*?<\/tr>/gi)];
+  const models = [];
+  for(const rowMatch of rows){
+    const row = rowMatch[0];
+    const nameMatch = row.match(/text-sm font-medium text-gray-900">([^<]+)</i);
+    const providerMatch = row.match(/rounded-full [^"]+">([^<]+)</i);
+    if(!nameMatch || !providerMatch) continue;
+    const id = nameMatch[1].trim();
+    const provider = providerMatch[1].trim();
+    if(!id || id.toLowerCase() === 'model') continue;
+    const rowText = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+    models.push(normalizeImportedModel({
+      id,
+      label: id,
+      provider,
+      free: rowText.includes('100% off') || rowText.includes('$0.00')
+    }));
+  }
+  const deduped = new Map();
+  models.filter(Boolean).forEach(model => {
+    if(!deduped.has(model.id)) deduped.set(model.id, model);
+  });
+  return [...deduped.values()];
+}
+
+async function importSumoPodModelsFromFile(file){
+  const text = await file.text();
+  let models = [];
+  if(file.name.toLowerCase().endsWith('.json')){
+    const parsed = JSON.parse(text);
+    models = Array.isArray(parsed) ? parsed.map(normalizeImportedModel).filter(Boolean) : [];
+  } else {
+    models = parseSumoPodModelsFromHtml(text);
+  }
+  if(!models.length) throw new Error('Tidak ada model valid yang berhasil dibaca dari file.');
+  S.aiProviderOverrides = Object.assign({}, S.aiProviderOverrides, {
+    sumopod: { models, importedAt: new Date().toISOString(), importedSource: file.name }
+  });
+  persistAIProviderOverrides();
+  return models;
+}
+
+function triggerSumoPodModelImport(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.html,.htm,.json';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if(!file) return;
+    try{
+      const models = await importSumoPodModelsFromFile(file);
+      if(S.aiConfig.provider === 'sumopod'){
+        const firstModel = models[0];
+        if(firstModel) S.aiConfig.model = firstModel.id;
+      }
+      closeAIPanel();
+      openAIPanel();
+      alert(`✅ Berhasil import ${models.length} model SumoPod dari ${file.name}`);
+    }catch(err){
+      alert(`❌ Gagal import model SumoPod: ${err.message}`);
+    }
+  };
+  input.click();
+}
+
+function resetSumoPodModels(){
+  if(S.aiProviderOverrides?.sumopod){
+    delete S.aiProviderOverrides.sumopod;
+    persistAIProviderOverrides();
+  }
+  const defaultModel = getProviderModels('sumopod')[0];
+  if(S.aiConfig.provider === 'sumopod' && defaultModel) {
+    S.aiConfig.model = defaultModel.id;
+  }
+  closeAIPanel();
+  openAIPanel();
+}
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -4757,7 +4877,7 @@ function updateNavAIBtn(){
 }
 
 function renderModelOptions(provider){
-  const models = AI_PROVIDERS[provider]?.models || [];
+  const models = getProviderModels(provider);
   const cur = S.aiConfig.model;
   return models.map(m=>{
     const badge = m.free ? '<span class="ai-badge free">GRATIS</span>' : '';
@@ -4768,13 +4888,15 @@ function renderModelOptions(provider){
 function openAIPanel(){
   if(document.getElementById('aiModalOverlay')) return;
   const prov = S.aiConfig.provider;
+  const providerCfg = getProviderConfig(prov);
+  const sumopodOverride = S.aiProviderOverrides?.sumopod;
   const overlay = document.createElement('div');
   overlay.id = 'aiModalOverlay';
   overlay.className = 'ai-modal-overlay';
   overlay.onclick = (e)=>{ if(e.target===overlay) closeAIPanel(); };
   
   const statusDot = S.aiConfig.connected ? 'green' : (S.aiConfig.apiKey ? 'yellow' : '');
-  const statusText = S.aiConfig.connected ? `Terhubung ke ${AI_PROVIDERS[prov]?.name} — Model: ${S.aiConfig.model}` 
+  const statusText = S.aiConfig.connected ? `Terhubung ke ${providerCfg?.name} — Model: ${S.aiConfig.model}` 
     : S.aiConfig.apiKey ? 'API Key tersimpan — belum diuji' : 'Belum terhubung. Masukkan API Key dan tes koneksi.';
 
   overlay.innerHTML = `
@@ -4804,24 +4926,40 @@ function openAIPanel(){
         <select class="ai-select" id="aiModelSel" onchange="S.aiConfig.model=this.value">
           ${renderModelOptions(prov)}
         </select>
+        <div style="margin-top:8px; font-size:11px; color:var(--text3);">
+          ${getProviderModels(prov).length} model tersedia${prov==='sumopod' && sumopodOverride?.importedSource ? ` • import dari ${sumopodOverride.importedSource}` : ''}
+        </div>
       </div>
     </div>
 
-    <div class="ai-field" id="aiKeyField" style="${AI_PROVIDERS[prov]?.requiresKey===false?'display:none':''}">
-      <label class="ai-label">API Key <a href="${AI_PROVIDERS[prov]?.docsUrl}" target="_blank" style="font-weight:400;text-transform:none;font-size:10px;color:var(--accent);margin-left:6px">→ Dapatkan key</a></label>
+    ${prov==='sumopod' ? `
+    <div class="ai-field" style="margin-top:-2px; margin-bottom:14px;">
+      <label class="ai-label">SumoPod Model List</label>
+      <div style="display:flex; gap:10px;">
+        <button class="ai-test-btn" type="button" onclick="triggerSumoPodModelImport()">📥 Import HTML/JSON</button>
+        ${sumopodOverride?.models?.length ? `<button class="ai-test-btn" type="button" onclick="resetSumoPodModels()">↺ Reset Default</button>` : ''}
+      </div>
+      <div style="font-size:11px; color:var(--text3); margin-top:8px; line-height:1.5;">
+        Gunakan file halaman model SumoPod terbaru untuk memperbarui daftar model tanpa menunggu update app.
+      </div>
+    </div>` : ''}
+
+    <div class="ai-field" id="aiKeyField" style="${providerCfg?.requiresKey===false?'display:none':''}">
+      <label class="ai-label">API Key <a href="${providerCfg?.docsUrl}" target="_blank" style="font-weight:400;text-transform:none;font-size:10px;color:var(--accent);margin-left:6px">→ Dapatkan key</a></label>
       <input class="ai-input" id="aiKeyInput" type="password" 
-        placeholder="${AI_PROVIDERS[prov]?.keyPlaceholder}"
+        placeholder="${providerCfg?.keyPlaceholder}"
         value="${S.aiConfig.apiKey}"
         oninput="S.aiConfig.apiKey=this.value;S.aiConfig.connected=false;updateAIStatus('idle')">
     </div>
 
-    <div class="ai-field ai-checkbox-row" id="aiProxyField" style="margin-top:-10px;margin-bottom:15px;${AI_PROVIDERS[prov]?.requiresKey===false?'display:none':''}">
+    <div class="ai-field ai-checkbox-row" id="aiProxyField" style="margin-top:-10px;margin-bottom:15px;${providerCfg?.requiresKey===false?'display:none':''}">
       <div style="display:flex;flex-direction:column;gap:5px">
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--text2)">
           <input type="checkbox" id="aiProxyCheck" ${S.aiConfig.useProxy?'checked':''} 
             onchange="S.aiConfig.useProxy=this.checked;S.aiConfig.connected=false;updateAIStatus('idle')">
           <span>Gunakan Internal Proxy (Serverless — Direkomendasikan)</span>
         </label>
+        ${S.isNative && prov !== 'puter' ? `<div style="font-size:11px;color:var(--text3);margin-left:24px;">Desktop mode: proxy native Tauri akan tetap dipakai otomatis untuk provider ini.</div>` : ''}
       </div>
     </div>
 
@@ -4841,7 +4979,8 @@ function switchAIProvider(prov){
   S.aiConfig.provider = prov;
   S.aiConfig.connected = false;
   // Set default free model for new provider
-  const freeModel = AI_PROVIDERS[prov]?.models.find(m=>m.free);
+  const providerModels = getProviderModels(prov);
+  const freeModel = providerModels.find(m=>m.free) || providerModels[0];
   if(freeModel) S.aiConfig.model = freeModel.id;
   // Re-render tabs & model options
   document.querySelectorAll('.ai-prov-tab').forEach((el,i)=>{
@@ -4852,12 +4991,13 @@ function switchAIProvider(prov){
   // Update key placeholder & visibility
   const inpField = document.getElementById('aiKeyField');
   const prxField = document.getElementById('aiProxyField');
-  const isKeyless = AI_PROVIDERS[prov]?.requiresKey === false;
+  const providerCfg = getProviderConfig(prov);
+  const isKeyless = providerCfg?.requiresKey === false;
   if(inpField) inpField.style.display = isKeyless ? 'none' : 'block';
   if(prxField) prxField.style.display = isKeyless ? 'none' : 'block';
   
   const inp = document.getElementById('aiKeyInput');
-  if(inp) inp.placeholder = AI_PROVIDERS[prov]?.keyPlaceholder || '';
+  if(inp) inp.placeholder = providerCfg?.keyPlaceholder || '';
   updateAIStatus('idle');
 }
 
@@ -4875,47 +5015,103 @@ function updateAIStatus(state, msg, detail){
   else { txt.textContent = S.aiConfig.apiKey ? '🔑 API Key tersedia — klik "Tes Koneksi"' : 'Masukkan API Key dan tes koneksi.'; }
 }
 
+function getErrorMessage(err){
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  if (typeof err.message === 'string' && err.message.trim()) return err.message;
+  try { return JSON.stringify(err); } catch(e) {}
+  return String(err);
+}
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label || 'Operation'} timeout setelah ${Math.round(ms / 1000)} detik`)), ms);
+    })
+  ]);
+}
+
+async function waitForPuterReady(timeoutMs = 6000){
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (window.puter?.ai?.chat) return window.puter;
+    await new Promise(resolve => setTimeout(resolve, 150));
+  }
+  throw new Error('Puter.js belum siap. Coba tunggu beberapa detik lalu ulangi.');
+}
+
+async function requestAIProxy({ provider, apiUrl, apiKey, payload }){
+  if (S.isNative && invoke) {
+    const data = await withTimeout(invoke('ai_proxy_request', {
+      body: {
+        provider,
+        apiUrl,
+        apiKey,
+        payload
+      }
+    }), 12000, `${provider} proxy request`);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => data
+    };
+  }
+
+  return await withTimeout(fetch('/api/ai-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, apiUrl, apiKey, payload })
+  }), 12000, `${provider} proxy fetch`);
+}
+
 async function testAPIKey(){
   const key = document.getElementById('aiKeyInput')?.value || S.aiConfig.apiKey;
   if(!key){ updateAIStatus('err','⚠️ API Key kosong.'); return; }
   S.aiConfig.apiKey = key;
   updateAIStatus('loading');
   
-  const prov = AI_PROVIDERS[S.aiConfig.provider];
+  const prov = getProviderConfig(S.aiConfig.provider);
   const apiUrl = `${prov.baseUrl}/chat/completions`;
   const internalProxyUrl = '/api/ai-proxy';
 
-  const freeFallbacks = [
-    'openrouter/free',
-    'google/gemma-3-27b-it:free',
-    'qwen/qwen3.6-plus:free',
-    'qwen/qwen3-coder:free',
-    'google/gemma-3-4b-it:free'
-  ];
+  const fallbackModels = {
+    sumopod: [
+      'deepseek-v3-2-251201',
+      'seed-2-0-lite-free',
+      'seed-2-0-mini-free',
+      'deepseek-v3-2'
+    ],
+    openrouter: [
+      'openrouter/free',
+      'google/gemma-3-27b-it:free',
+      'qwen/qwen3.6-plus:free',
+      'qwen/qwen3-coder:free',
+      'google/gemma-3-4b-it:free'
+    ]
+  };
 
   async function attemptTest(modelId) {
       const payload = {
           model: modelId,
-          messages:[{role:'user',content:'Say OK'}],
-          max_tokens: 15
+          messages:[{role:'user',content:'OK'}],
+          max_tokens: 4
       };
 
       if (S.aiConfig.provider === 'puter') {
           try {
-              const response = await puter.ai.chat("Say OK", { model: modelId });
+              await waitForPuterReady(5000);
+              const response = await withTimeout(puter.ai.chat("OK", { model: modelId }), 8000, 'Puter.js test');
               if (!response) throw new Error('Puter returned empty response.');
               return { ok: true, status: 200, json: async () => ({ id: 'puter-test', choices: [{ message: { content: response.toString() } }] }) };
           } catch (err) { throw err; }
       }
 
-      if (S.aiConfig.useProxy) {
-          return await fetch(internalProxyUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ provider: S.aiConfig.provider, apiUrl: apiUrl, apiKey: key, payload: payload })
-          });
+      const shouldUseProxy = S.isNative ? S.aiConfig.provider !== 'puter' : S.aiConfig.useProxy;
+      if (shouldUseProxy) {
+          return await requestAIProxy({ provider: S.aiConfig.provider, apiUrl, apiKey: key, payload });
       } else {
-          return await fetch(apiUrl, {
+          return await withTimeout(fetch(apiUrl, {
               method: 'POST',
               headers: {
                   'Authorization': `Bearer ${key}`,
@@ -4923,17 +5119,23 @@ async function testAPIKey(){
                   ...(S.aiConfig.provider==='openrouter' ? { 'HTTP-Referer': 'https://devforge.studio', 'X-Title': 'DevForge Studio' } : {})
               },
               body: JSON.stringify(payload)
-          });
+          }), 12000, `${S.aiConfig.provider} direct fetch`);
       }
   }
 
   try {
     let res = await attemptTest(S.aiConfig.model);
-    if (res.status === 429 && S.aiConfig.provider === 'openrouter' && S.aiConfig.model.endsWith(':free')) {
-        for (const fallback of freeFallbacks) {
+    const providerFallbacks = fallbackModels[S.aiConfig.provider] || [];
+    const shouldTryFallback = !res.ok || (res.status === 429 && S.aiConfig.provider === 'openrouter' && S.aiConfig.model.endsWith(':free'));
+    if (shouldTryFallback && providerFallbacks.length) {
+        for (const fallback of providerFallbacks) {
             if (fallback === S.aiConfig.model) continue;
-            updateAIStatus('loading', `⏳ Rate Limit! Mencoba cadangan: ${fallback.split('/').pop()}...`);
-            res = await attemptTest(fallback);
+            updateAIStatus('loading', `⏳ Mencoba model cadangan: ${fallback.split('/').pop()}...`);
+            try {
+              res = await attemptTest(fallback);
+            } catch (fallbackErr) {
+              continue;
+            }
             if (res.ok) {
                 S.aiConfig.connected = true;
                 const sel = document.getElementById('aiModelSel');
@@ -4961,7 +5163,7 @@ async function testAPIKey(){
     }
   } catch(err){
     S.aiConfig.connected = false;
-    updateAIStatus('err', err.message);
+    updateAIStatus('err', getErrorMessage(err));
   }
 }
 
@@ -4973,7 +5175,7 @@ function saveAIConfig(){
   closeAIPanel();
   updateNavAIBtn();
   if(S.aiConfig.enabled){
-    alert(`✅ AI Enhancement aktif!\nProvider: ${AI_PROVIDERS[S.aiConfig.provider]?.name}\nModel: ${S.aiConfig.model}\n\nDownload Bundle selanjutnya akan diperkuat oleh AI.`);
+    alert(`✅ AI Enhancement aktif!\nProvider: ${getProviderConfig(S.aiConfig.provider)?.name}\nModel: ${S.aiConfig.model}\n\nDownload Bundle selanjutnya akan diperkuat oleh AI.`);
   } else if(key && !S.aiConfig.connected){
     alert('⚠️ API Key disimpan tapi belum terverifikasi.\nSilakan tes koneksi terlebih dahulu.');
   }

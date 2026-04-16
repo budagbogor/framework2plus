@@ -458,7 +458,8 @@ PROFILE GUIDANCE: ${profile.guidance}`;
     let res;
     if (S.aiConfig.provider === 'puter') {
         const combined = `${enrichedSystem}\n\n${user}`;
-        const resp = await puter.ai.chat(combined, {model: S.aiConfig.model});
+        await waitForPuterReady(5000);
+        const resp = await withTimeout(puter.ai.chat(combined, {model: S.aiConfig.model}), 12000, 'Puter.js generation');
         res = { ok: true, json: async () => {
             let content = resp.toString().replace(/```json/g, '').replace(/```/g, '').trim();
             try { return JSON.parse(content); } catch(e) {
@@ -467,18 +468,24 @@ PROFILE GUIDANCE: ${profile.guidance}`;
             }
         }};
     } else {
-        const url = S.aiConfig.useProxy ? '/api/ai-proxy' : `${prov.baseUrl}/chat/completions`;
-        const headers = { 'Content-Type': 'application/json' };
-        if(!S.aiConfig.useProxy) headers['Authorization'] = `Bearer ${S.aiConfig.apiKey}`;
-
-        const fetchBody = S.aiConfig.useProxy ? {
-            provider: S.aiConfig.provider,
-            apiUrl: `${prov.baseUrl}/chat/completions`,
-            apiKey: S.aiConfig.apiKey,
-            payload: body
-        } : body;
-
-        res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(fetchBody) });
+        const shouldUseProxy = S.isNative ? S.aiConfig.provider !== 'puter' : S.aiConfig.useProxy;
+        if (shouldUseProxy) {
+            res = await requestAIProxy({
+                provider: S.aiConfig.provider,
+                apiUrl: `${prov.baseUrl}/chat/completions`,
+                apiKey: S.aiConfig.apiKey,
+                payload: body
+            });
+        } else {
+            res = await withTimeout(fetch(`${prov.baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${S.aiConfig.apiKey}`
+                },
+                body: JSON.stringify(body)
+            }), 20000, `${S.aiConfig.provider} generation fetch`);
+        }
     }
 
     if(res.ok){

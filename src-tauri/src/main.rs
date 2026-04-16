@@ -2,12 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{AppHandle, Emitter, Manager, State};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Mutex;
+use std::time::Duration;
 use tokio::process::Command;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
@@ -36,6 +38,75 @@ struct ReleaseArtifact {
     file_name: String,
     artifact_type: String,
     size_bytes: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AiProxyRequest {
+    provider: String,
+    api_url: String,
+    api_key: String,
+    payload: Value,
+}
+
+#[tauri::command]
+async fn ai_proxy_request(body: AiProxyRequest) -> Result<Value, String> {
+    if body.api_url.trim().is_empty() || body.api_key.trim().is_empty() {
+        return Err("Missing required fields: api_url or api_key".into());
+    }
+
+    let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(12))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut request = client
+        .post(&body.api_url)
+        .bearer_auth(&body.api_key)
+        .header("Content-Type", "application/json");
+
+    if body.provider == "openrouter" {
+        request = request
+            .header("HTTP-Referer", "https://devforge.studio")
+            .header("X-Title", "DevForge Studio");
+    }
+
+    let response = request
+        .json(&body.payload)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let status = response.status();
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
+    if !content_type.contains("application/json") {
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "Provider AI ({}) mengembalikan respon non-JSON (Status: {}). {}",
+            body.provider,
+            status.as_u16(),
+            text.chars().take(200).collect::<String>()
+        ));
+    }
+
+    let data: Value = response.json().await.map_err(|e| e.to_string())?;
+    if status.is_success() {
+        Ok(data)
+    } else {
+        let detail = data
+            .get("error")
+            .and_then(|err| err.get("message").or_else(|| Some(err)))
+            .and_then(|value| value.as_str())
+            .or_else(|| data.get("message").and_then(|value| value.as_str()))
+            .unwrap_or("Unknown AI provider error");
+        Err(format!("Server returned {}: {}", status.as_u16(), detail))
+    }
 }
 
 #[tauri::command]
@@ -243,7 +314,13 @@ fn main() {
         .manage(CommandRegistry { pids: Mutex::new(HashMap::new()) })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![save_file, execute_command, stop_command, list_release_artifacts])
+        .invoke_handler(tauri::generate_handler![
+            save_file,
+            execute_command,
+            stop_command,
+            list_release_artifacts,
+            ai_proxy_request
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
