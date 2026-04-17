@@ -5,23 +5,22 @@
  */
 
 export default async function handler(req, res) {
-  // 1. Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { provider, apiUrl, apiKey, payload } = req.body;
+    const { provider, apiUrl, apiKey, payload, method = 'POST' } = req.body;
+    const requestMethod = String(method || 'POST').toUpperCase();
 
-    if (!apiUrl || !apiKey || !payload) {
+    if (!apiUrl || !apiKey || (requestMethod !== 'GET' && !payload)) {
       return res.status(400).json({ error: 'Missing required fields: apiUrl, apiKey, or payload' });
     }
 
-    console.log(`[Proxy] Forwarding request to ${provider}: ${apiUrl}`);
+    console.log(`[Proxy] Forwarding request to ${provider}: ${requestMethod} ${apiUrl}`);
 
-    // 2. Perform the actual request to the AI Provider from the server
     const response = await fetch(apiUrl, {
-      method: 'POST',
+      method: requestMethod,
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
           'X-Title': 'DevForge Studio'
         } : {})
       },
-      body: JSON.stringify(payload)
+      ...(requestMethod === 'GET' ? {} : { body: JSON.stringify(payload) })
     });
 
     // 3. Handle non-JSON responses (security/errors)

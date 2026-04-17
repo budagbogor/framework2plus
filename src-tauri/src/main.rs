@@ -46,7 +46,8 @@ struct AiProxyRequest {
     provider: String,
     api_url: String,
     api_key: String,
-    payload: Value,
+    payload: Option<Value>,
+    method: Option<String>,
 }
 
 #[tauri::command]
@@ -55,15 +56,23 @@ async fn ai_proxy_request(body: AiProxyRequest) -> Result<Value, String> {
         return Err("Missing required fields: api_url or api_key".into());
     }
 
+    let method = body
+        .method
+        .clone()
+        .unwrap_or_else(|| "POST".to_string())
+        .to_uppercase();
+
     let client = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(12))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut request = client
-        .post(&body.api_url)
-        .bearer_auth(&body.api_key)
-        .header("Content-Type", "application/json");
+    let mut request = match method.as_str() {
+        "GET" => client.get(&body.api_url),
+        _ => client.post(&body.api_url),
+    }
+    .bearer_auth(&body.api_key)
+    .header("Content-Type", "application/json");
 
     if body.provider == "openrouter" {
         request = request
@@ -71,11 +80,15 @@ async fn ai_proxy_request(body: AiProxyRequest) -> Result<Value, String> {
             .header("X-Title", "DevForge Studio");
     }
 
-    let response = request
-        .json(&body.payload)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let response = match method.as_str() {
+        "GET" => request.send().await.map_err(|e| e.to_string())?,
+        _ => {
+            let payload = body
+                .payload
+                .ok_or_else(|| "Missing required field: payload".to_string())?;
+            request.json(&payload).send().await.map_err(|e| e.to_string())?
+        }
+    };
 
     let status = response.status();
     let content_type = response

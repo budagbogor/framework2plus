@@ -1423,6 +1423,14 @@ function saveWorkspaceToLocal() {
 // Defaults for aiConfig
 S.aiConfig = Object.assign({provider:'sumopod', model:'deepseek-v3-2-251201', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
 
+const MODEL_ALIASES = {
+  sumopod: {
+    'seed-2-0-lite-free': 'seed-2-0-lite',
+    'seed-2-0-mini-free': 'seed-2-0-mini',
+    'seed-2-0-pro-free': 'seed-2-0-pro'
+  }
+};
+
 // ═══════════════════════════════════════════
 // AI PROVIDER DATA
 // ═══════════════════════════════════════════
@@ -1434,13 +1442,9 @@ const AI_PROVIDERS = {
     docsUrl: 'https://sumopod.com/dashboard/ai/quickstart',
     models: [
       {id:'deepseek-v3-2-251201', label:'DeepSeek V3.2 251201 (REKOMENDASI)', provider:'byteplus', free:false},
-      {id:'seed-2-0-lite-free',  label:'Seed 2.0 Lite (GRATIS)',     provider:'byteplus', free:true},
+      {id:'seed-2-0-lite',       label:'Seed 2.0 Lite (GRATIS)',     provider:'byteplus', free:true},
       {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:true},
       {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
-      {id:'seed-2-0-mini-free',  label:'Seed 2.0 Mini (GRATIS)',      provider:'byteplus', free:true},
-      {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:false},
-      {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
-      {id:'seed-2-0-pro-free',   label:'Seed 2.0 Pro (GRATIS)',       provider:'byteplus', free:true},
       {id:'deepseek-v3-2',       label:'DeepSeek V3.2',               provider:'byteplus', free:false},
       {id:'deepseek-r1',         label:'DeepSeek R1 (Thinking)',      provider:'byteplus', free:false},
       {id:'kimi-k2',             label:'Kimi K2',                     provider:'byteplus', free:false},
@@ -1518,8 +1522,23 @@ function getProviderConfig(providerKey){
   });
 }
 
+function normalizeProviderModelId(providerKey, modelId){
+  const providerAliases = MODEL_ALIASES[providerKey] || {};
+  return providerAliases[modelId] || modelId;
+}
+
 function getProviderModels(providerKey){
-  return getProviderConfig(providerKey)?.models || [];
+  const models = getProviderConfig(providerKey)?.models || [];
+  const deduped = new Map();
+  models.forEach(model => {
+    if(!model) return;
+    const normalizedId = normalizeProviderModelId(providerKey, model.id);
+    if(!normalizedId) return;
+    if(!deduped.has(normalizedId)) {
+      deduped.set(normalizedId, Object.assign({}, model, { id: normalizedId }));
+    }
+  });
+  return [...deduped.values()];
 }
 
 function persistAIProviderOverrides(){
@@ -1528,14 +1547,17 @@ function persistAIProviderOverrides(){
   } catch(e){}
 }
 
+S.aiConfig.model = normalizeProviderModelId(S.aiConfig.provider, S.aiConfig.model);
+
 function normalizeImportedModel(model){
   if(!model || !model.id) return null;
-  const id = String(model.id).trim();
+  const provider = String(model.provider || 'unknown').trim();
+  const id = normalizeProviderModelId('sumopod', String(model.id).trim());
   if(!id) return null;
   return {
     id,
     label: String(model.label || id).trim(),
-    provider: String(model.provider || 'unknown').trim(),
+    provider,
     free: !!model.free
   };
 }
@@ -5041,14 +5063,15 @@ async function waitForPuterReady(timeoutMs = 6000){
   throw new Error('Puter.js belum siap. Coba tunggu beberapa detik lalu ulangi.');
 }
 
-async function requestAIProxy({ provider, apiUrl, apiKey, payload }){
+async function requestAIProxy({ provider, apiUrl, apiKey, payload, method = 'POST' }){
   if (S.isNative && invoke) {
     const data = await withTimeout(invoke('ai_proxy_request', {
       body: {
         provider,
         apiUrl,
         apiKey,
-        payload
+        payload,
+        method
       }
     }), 12000, `${provider} proxy request`);
     return {
@@ -5061,8 +5084,48 @@ async function requestAIProxy({ provider, apiUrl, apiKey, payload }){
   return await withTimeout(fetch('/api/ai-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider, apiUrl, apiKey, payload })
+    body: JSON.stringify({ provider, apiUrl, apiKey, payload, method })
   }), 12000, `${provider} proxy fetch`);
+}
+
+function buildAIRequestHeaders(providerKey, apiKey){
+  return {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    ...(providerKey === 'openrouter' ? { 'HTTP-Referer': 'https://devforge.studio', 'X-Title': 'DevForge Studio' } : {})
+  };
+}
+
+function extractProviderModelsFromCatalog(providerKey, data){
+  const items = Array.isArray(data?.data) ? data.data : [];
+  return items.map(item => normalizeImportedModel({
+    id: item?.id || item?.name,
+    label: item?.name || item?.id,
+    provider: item?.owned_by || item?.provider || providerKey,
+    free: /free|gratis/i.test(`${item?.id || ''} ${item?.name || ''}`)
+  })).filter(Boolean);
+}
+
+function syncProviderModelsFromCatalog(providerKey, data){
+  const catalogModels = extractProviderModelsFromCatalog(providerKey, data);
+  if(!catalogModels.length) return [];
+  const merged = new Map();
+  (AI_PROVIDERS[providerKey]?.models || []).forEach(model => {
+    if(!model?.id) return;
+    const normalizedId = normalizeProviderModelId(providerKey, model.id);
+    merged.set(normalizedId, Object.assign({}, model, { id: normalizedId }));
+  });
+  catalogModels.forEach(model => {
+    if(!model?.id) return;
+    const existing = merged.get(model.id) || {};
+    merged.set(model.id, Object.assign({}, existing, model));
+  });
+  S.aiProviderOverrides = S.aiProviderOverrides || {};
+  S.aiProviderOverrides[providerKey] = Object.assign({}, S.aiProviderOverrides[providerKey], {
+    models: [...merged.values()]
+  });
+  persistAIProviderOverrides();
+  return [...merged.values()];
 }
 
 async function testAPIKey(){
@@ -5072,8 +5135,12 @@ async function testAPIKey(){
   updateAIStatus('loading');
   
   const prov = getProviderConfig(S.aiConfig.provider);
+  if(!prov){ updateAIStatus('err','Provider AI tidak dikenali.'); return; }
+  if(prov.requiresKey !== false && !key){ updateAIStatus('err','âš ï¸ API Key kosong.'); return; }
+  S.aiConfig.apiKey = key;
+  updateAIStatus('loading');
+  const catalogUrl = `${prov.baseUrl}/models`;
   const apiUrl = `${prov.baseUrl}/chat/completions`;
-  const internalProxyUrl = '/api/ai-proxy';
 
   const fallbackModels = {
     sumopod: [
@@ -5092,8 +5159,9 @@ async function testAPIKey(){
   };
 
   async function attemptTest(modelId) {
+      const resolvedModelId = normalizeProviderModelId(S.aiConfig.provider, modelId);
       const payload = {
-          model: modelId,
+          model: resolvedModelId,
           messages:[{role:'user',content:'OK'}],
           max_tokens: 4
       };
@@ -5101,7 +5169,7 @@ async function testAPIKey(){
       if (S.aiConfig.provider === 'puter') {
           try {
               await waitForPuterReady(5000);
-              const response = await withTimeout(puter.ai.chat("OK", { model: modelId }), 8000, 'Puter.js test');
+              const response = await withTimeout(puter.ai.chat("OK", { model: resolvedModelId }), 8000, 'Puter.js test');
               if (!response) throw new Error('Puter returned empty response.');
               return { ok: true, status: 200, json: async () => ({ id: 'puter-test', choices: [{ message: { content: response.toString() } }] }) };
           } catch (err) { throw err; }
@@ -5151,6 +5219,26 @@ async function testAPIKey(){
       let bodyData = {};
       try { bodyData = await res.json(); } catch(e){}
       const errDetail = bodyData.error?.message || bodyData.message || res.statusText;
+      const normalizedActiveModel = normalizeProviderModelId(S.aiConfig.provider, S.aiConfig.model);
+      if (
+        S.aiConfig.provider === 'sumopod' &&
+        /invalid model name/i.test(String(errDetail || '')) &&
+        normalizedActiveModel !== S.aiConfig.model
+      ) {
+        S.aiConfig.model = normalizedActiveModel;
+        const sel = document.getElementById('aiModelSel');
+        if(sel) sel.value = normalizedActiveModel;
+        updateAIStatus('loading', `⏳ Model lama terdeteksi. Mencoba ulang dengan ${normalizedActiveModel}...`);
+        res = await attemptTest(normalizedActiveModel);
+        if(res.ok){
+          const data = await res.json();
+          if(data.choices?.[0] || data.id){
+            S.aiConfig.connected = true;
+            updateAIStatus('ok', `✅ Terhubung! Model: ${normalizedActiveModel}`);
+            return;
+          }
+        }
+      }
       throw new Error(`Server returned ${res.status}: ${errDetail}`);
     }
     
@@ -5160,6 +5248,161 @@ async function testAPIKey(){
       updateAIStatus('ok', `✅ Terhubung! Model: ${S.aiConfig.model.split('/').pop()}`);
     } else {
        throw new Error('Format respons tidak dikenal.');
+    }
+  } catch(err){
+    S.aiConfig.connected = false;
+    updateAIStatus('err', getErrorMessage(err));
+  }
+}
+
+async function testAPIKey(){
+  const key = document.getElementById('aiKeyInput')?.value || S.aiConfig.apiKey;
+  const providerKey = S.aiConfig.provider;
+  const prov = getProviderConfig(providerKey);
+  if(!prov){ updateAIStatus('err','Provider AI tidak dikenali.'); return; }
+  if(prov.requiresKey !== false && !key){ updateAIStatus('err','API Key kosong.'); return; }
+
+  S.aiConfig.apiKey = key;
+  updateAIStatus('loading');
+
+  const catalogUrl = `${prov.baseUrl}/models`;
+  const apiUrl = `${prov.baseUrl}/chat/completions`;
+  const fallbackModels = {
+    sumopod: ['deepseek-v3-2-251201', 'seed-2-0-lite', 'seed-2-0-mini', 'deepseek-v3-2'],
+    openrouter: ['openrouter/free', 'google/gemma-3-27b-it:free', 'qwen/qwen3.6-plus:free', 'qwen/qwen3-coder:free', 'google/gemma-3-4b-it:free']
+  };
+
+  async function attemptCatalogFetch() {
+    if (providerKey === 'puter') {
+      await waitForPuterReady(5000);
+      return { ok: true, status: 200, json: async () => ({ data: [] }) };
+    }
+
+    const shouldUseProxy = S.isNative ? providerKey !== 'puter' : S.aiConfig.useProxy;
+    if (shouldUseProxy) {
+      return await requestAIProxy({ provider: providerKey, apiUrl: catalogUrl, apiKey: key, method: 'GET' });
+    }
+
+    return await withTimeout(fetch(catalogUrl, {
+      method: 'GET',
+      headers: buildAIRequestHeaders(providerKey, key)
+    }), 12000, `${providerKey} catalog fetch`);
+  }
+
+  async function attemptChatTest(modelId) {
+    const resolvedModelId = normalizeProviderModelId(providerKey, modelId);
+    const payload = {
+      model: resolvedModelId,
+      messages:[{role:'user',content:'OK'}],
+      max_tokens: 4
+    };
+
+    if (providerKey === 'puter') {
+      await waitForPuterReady(5000);
+      const response = await withTimeout(puter.ai.chat('OK', { model: resolvedModelId }), 8000, 'Puter.js test');
+      if (!response) throw new Error('Puter returned empty response.');
+      return { ok: true, status: 200, json: async () => ({ id: 'puter-test', choices: [{ message: { content: response.toString() } }] }) };
+    }
+
+    const shouldUseProxy = S.isNative ? providerKey !== 'puter' : S.aiConfig.useProxy;
+    if (shouldUseProxy) {
+      return await requestAIProxy({ provider: providerKey, apiUrl, apiKey: key, payload });
+    }
+
+    return await withTimeout(fetch(apiUrl, {
+      method: 'POST',
+      headers: buildAIRequestHeaders(providerKey, key),
+      body: JSON.stringify(payload)
+    }), 12000, `${providerKey} direct fetch`);
+  }
+
+  try {
+    if (providerKey === 'puter') {
+      await attemptCatalogFetch();
+      S.aiConfig.connected = true;
+      updateAIStatus('ok', 'Puter.js siap dipakai.');
+      return;
+    }
+
+    const catalogRes = await attemptCatalogFetch();
+    if(!catalogRes.ok){
+      let bodyData = {};
+      try { bodyData = await catalogRes.json(); } catch(e){}
+      const errDetail = bodyData.error?.message || bodyData.error || bodyData.message || catalogRes.statusText;
+      throw new Error(`Server returned ${catalogRes.status}: ${errDetail}`);
+    }
+
+    const catalogData = await catalogRes.json();
+    const availableModels = syncProviderModelsFromCatalog(providerKey, catalogData);
+    const availableModelIds = new Set(availableModels.map(model => model.id));
+    const providerFallbacks = fallbackModels[providerKey] || [];
+    const normalizedActiveModel = normalizeProviderModelId(providerKey, S.aiConfig.model);
+
+    if (availableModelIds.size && !availableModelIds.has(normalizedActiveModel)) {
+      const nextModel = providerFallbacks.find(modelId => availableModelIds.has(normalizeProviderModelId(providerKey, modelId)))
+        || availableModels[0]?.id;
+      if (nextModel) {
+        S.aiConfig.model = normalizeProviderModelId(providerKey, nextModel);
+        const sel = document.getElementById('aiModelSel');
+        if(sel) sel.value = S.aiConfig.model;
+      }
+    }
+
+    let res = await attemptChatTest(S.aiConfig.model);
+    const shouldTryFallback = !res.ok || (res.status === 429 && providerKey === 'openrouter' && S.aiConfig.model.endsWith(':free'));
+    if (shouldTryFallback && providerFallbacks.length) {
+      for (const fallback of providerFallbacks) {
+        if (normalizeProviderModelId(providerKey, fallback) === S.aiConfig.model) continue;
+        updateAIStatus('loading', `Mencoba model cadangan: ${fallback.split('/').pop()}...`);
+        try {
+          res = await attemptChatTest(fallback);
+        } catch (fallbackErr) {
+          continue;
+        }
+        if (res.ok) {
+          const resolvedFallback = normalizeProviderModelId(providerKey, fallback);
+          S.aiConfig.connected = true;
+          const sel = document.getElementById('aiModelSel');
+          if(sel) sel.value = resolvedFallback;
+          S.aiConfig.model = resolvedFallback;
+          updateAIStatus('ok', `Berhasil auto-switch ke: ${resolvedFallback.split('/').pop()}`);
+          return;
+        }
+      }
+    }
+
+    if(!res.ok){
+      let bodyData = {};
+      try { bodyData = await res.json(); } catch(e){}
+      const errDetail = bodyData.error?.message || bodyData.error || bodyData.message || res.statusText;
+      if (
+        providerKey === 'sumopod' &&
+        /invalid model name/i.test(String(errDetail || '')) &&
+        normalizedActiveModel !== S.aiConfig.model
+      ) {
+        S.aiConfig.model = normalizedActiveModel;
+        const sel = document.getElementById('aiModelSel');
+        if(sel) sel.value = normalizedActiveModel;
+        updateAIStatus('loading', `Model lama terdeteksi. Mencoba ulang dengan ${normalizedActiveModel}...`);
+        res = await attemptChatTest(normalizedActiveModel);
+        if(res.ok){
+          const data = await res.json();
+          if(data.choices?.[0] || data.id){
+            S.aiConfig.connected = true;
+            updateAIStatus('ok', `Terhubung. Model: ${normalizedActiveModel}`);
+            return;
+          }
+        }
+      }
+      throw new Error(`Server returned ${res.status}: ${errDetail}`);
+    }
+
+    const data = await res.json();
+    if(data.choices?.[0] || data.id){
+      S.aiConfig.connected = true;
+      updateAIStatus('ok', `Terhubung. ${availableModels.length ? `${availableModels.length} model terdeteksi.` : `Model: ${S.aiConfig.model.split('/').pop()}`}`);
+    } else {
+      throw new Error('Format respons tidak dikenal.');
     }
   } catch(err){
     S.aiConfig.connected = false;
