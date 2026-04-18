@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.12] - 2026-04-18
+
+### Fixed
+- Menghapus `onclick` inline dari tombol `Mulai Pembangunan Otonom` agar tidak bentrok dengan action bridge global.
+- Menangkap event tombol builder langsung di fase capture supaya klik tetap masuk ke `startAutonomousBuild()`.
+- Membuat installer `.exe` baru dari fix terbaru tombol builder.
+
 ## [2.0.11] - 2026-04-18
 
 ### Fixed

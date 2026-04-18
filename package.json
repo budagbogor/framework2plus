@@ -1,6 +1,6 @@
 {
   "name": "devforge-studio",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "Smart framework generator for Software (SDLC) and Agentic AI (ADLC) projects",
   "main": "public/index.html",
   "scripts": {

@@ -621,12 +621,16 @@ function installBuilderActionBindings(){
     if (window.__builderActionBindingsInstalled) return;
     window.__builderActionBindingsInstalled = true;
 
-    document.addEventListener('click', (event) => {
+    const handler = (event) => {
         const trigger = event.target.closest('[data-builder-action="start-autonomous-build"]');
         if (!trigger) return;
         event.preventDefault();
+        event.stopPropagation();
         startAutonomousBuild();
-    });
+    };
+
+    document.addEventListener('click', handler, true);
+    document.addEventListener('pointerup', handler, true);
 }
 
 // Expose critical builder actions explicitly so inline handlers and

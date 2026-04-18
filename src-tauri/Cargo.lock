@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "devforge-studio"
-version = "2.0.11"
+version = "2.0.12"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
