@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.11] - 2026-04-18
+
+### Fixed
+- Menambahkan fallback event binding untuk tombol `Mulai Pembangunan Otonom` di halaman akhir hasil generate.
+- Mengekspos action builder ke `window` agar klik tetap bekerja stabil di runtime webview / inline handler.
+- Membuat installer `.exe` baru dari state terbaru proyek.
+
 ## [2.0.10] - 2026-04-18
 
 ### Fixed

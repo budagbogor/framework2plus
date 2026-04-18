@@ -10,7 +10,7 @@ function renderBuilderEmptyState(gClass) {
             <div class="builder-empty-icon">🏗️</div>
             <div class="q-title" style="font-size: 28px; background: linear-gradient(90deg, #fff, #00f0ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Autonomous Professional Developer</div>
             <div class="q-desc" style="max-width: 600px; margin-top: 20px; font-size: 16px; opacity: 0.8;">Platform ini akan mengambil alih peran sebagai <strong>Senior Developer</strong>. Ia akan merancang arsitektur, mendesain basis data, dan menulis kode siap produksi secara otonom 100%.</div>
-            <button class="btn btn-generate ${gClass} builder-empty-btn" onclick="startAutonomousBuild()">🚀 Mulai Pembangunan Otonom</button>
+            <button class="btn btn-generate ${gClass} builder-empty-btn" data-builder-action="start-autonomous-build" type="button" onclick="startAutonomousBuild()">🚀 Mulai Pembangunan Otonom</button>
         </div>
     `;
 }

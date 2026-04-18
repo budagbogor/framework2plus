@@ -617,6 +617,18 @@ function restart(){
     window.scrollTo(0, 0);
 }
 
+function installBuilderActionBindings(){
+    if (window.__builderActionBindingsInstalled) return;
+    window.__builderActionBindingsInstalled = true;
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-builder-action="start-autonomous-build"]');
+        if (!trigger) return;
+        event.preventDefault();
+        startAutonomousBuild();
+    });
+}
+
 // Expose critical builder actions explicitly so inline handlers and
 // the native action bridge can resolve them reliably across runtimes.
 window.startAutonomousBuild = startAutonomousBuild;
@@ -624,3 +636,4 @@ window.submitAgentChat = submitAgentChat;
 window.viewVirtualFile = viewVirtualFile;
 window.downloadVirtualProject = downloadVirtualProject;
 window.restart = restart;
+installBuilderActionBindings();
