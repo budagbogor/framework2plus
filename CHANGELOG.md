@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.10] - 2026-04-18
+
+### Fixed
+- Perbaikan handler tombol `Mulai Pembangunan Otonom` agar bisa dipanggil stabil dari UI builder.
+- Menambahkan validasi yang lebih jelas saat AI belum aktif atau blueprint project belum tersedia.
+- Menyelaraskan metadata versi release di `package.json`, `package-lock.json`, `Cargo.toml`, dan `tauri.conf.json`.
+
 ---
 
 ## [2.0.0] — 2025

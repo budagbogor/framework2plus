@@ -80,8 +80,17 @@ async function maybeRunNativeReleasePipeline(){
 
 async function startAutonomousBuild(){
     if(!S.aiConfig.enabled || !S.aiConfig.connected){
+        addBuildLog("AI Settings belum aktif. Hubungkan AI terlebih dahulu sebelum menjalankan autonomous build.", "error");
+        render();
         alert("AI Settings belum aktif. Silakan hubungkan AI (Puter.js atau OpenRouter) terlebih dahulu.");
         openAIPanel();
+        return;
+    }
+
+    if(!S.generated){
+        addBuildLog("Blueprint project belum dibuat. Jalankan generate project dulu sebelum memulai pembangunan otonom.", "error");
+        render();
+        alert("Blueprint project belum tersedia. Silakan generate project dulu.");
         return;
     }
 
@@ -607,3 +616,11 @@ function restart(){
     render();
     window.scrollTo(0, 0);
 }
+
+// Expose critical builder actions explicitly so inline handlers and
+// the native action bridge can resolve them reliably across runtimes.
+window.startAutonomousBuild = startAutonomousBuild;
+window.submitAgentChat = submitAgentChat;
+window.viewVirtualFile = viewVirtualFile;
+window.downloadVirtualProject = downloadVirtualProject;
+window.restart = restart;
