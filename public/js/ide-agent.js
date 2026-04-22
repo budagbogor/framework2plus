@@ -617,12 +617,26 @@ function restart(){
     window.scrollTo(0, 0);
 }
 
+function getBuilderEventTarget(event, selector){
+    const target = event?.target;
+    if (target && typeof target.closest === 'function') {
+        return target.closest(selector);
+    }
+    const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+    for (const node of path) {
+        if (node && typeof node.closest === 'function') {
+            return node.closest(selector);
+        }
+    }
+    return null;
+}
+
 function installBuilderActionBindings(){
     if (window.__builderActionBindingsInstalled) return;
     window.__builderActionBindingsInstalled = true;
 
     const handler = (event) => {
-        const trigger = event.target.closest('[data-builder-action="start-autonomous-build"]');
+        const trigger = getBuilderEventTarget(event, '[data-builder-action="start-autonomous-build"]');
         if (!trigger) return;
         event.preventDefault();
         event.stopPropagation();

@@ -5634,12 +5634,26 @@ function runInlineActionBridge(code, element, event){
   }
 }
 
+function getEventClosestTarget(event, selector){
+  const target = event?.target;
+  if(target && typeof target.closest === 'function'){
+    return target.closest(selector);
+  }
+  const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+  for(const node of path){
+    if(node && typeof node.closest === 'function'){
+      return node.closest(selector);
+    }
+  }
+  return null;
+}
+
 function installNativeActionBridge(){
   if(window.__nativeActionBridgeInstalled) return;
   window.__nativeActionBridgeInstalled = true;
 
   const handleInlineClick = (event) => {
-    const el = event.target.closest('[onclick]');
+    const el = getEventClosestTarget(event, '[onclick]');
     if(!el) return;
     const code = el.getAttribute('onclick');
     if(!code) return;
@@ -5652,7 +5666,7 @@ function installNativeActionBridge(){
   document.addEventListener('pointerup', handleInlineClick, true);
 
   document.addEventListener('keydown', (event) => {
-    const el = event.target.closest('[onkeydown]');
+    const el = getEventClosestTarget(event, '[onkeydown]');
     if(!el) return;
     const code = el.getAttribute('onkeydown');
     if(!code) return;

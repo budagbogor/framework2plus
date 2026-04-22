@@ -221,12 +221,26 @@ async function dlProjectBundle() {
   link.click();
 }
 
+function getOutputEventTarget(event, selector) {
+  const target = event?.target;
+  if (target && typeof target.closest === 'function') {
+    return target.closest(selector);
+  }
+  const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+  for (const node of path) {
+    if (node && typeof node.closest === 'function') {
+      return node.closest(selector);
+    }
+  }
+  return null;
+}
+
 function installOutputActionBindings() {
   if (window.__outputActionBindingsInstalled) return;
   window.__outputActionBindingsInstalled = true;
 
   const handler = (event) => {
-    const trigger = event.target.closest('[data-output-action]');
+    const trigger = getOutputEventTarget(event, '[data-output-action]');
     if (!trigger) return;
 
     const action = trigger.getAttribute('data-output-action');
