@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.13] - 2026-04-23
+
+### Fixed
+- Memperkeras resolusi target event untuk action bridge global, tombol builder, dan tombol output akhir.
+- Mengurangi kasus klik gagal saat `event.target` bukan `Element` biasa di browser atau webview.
+- Menyiapkan build web dan installer desktop terbaru dari patch interaksi ini.
+
 ## [2.0.12] - 2026-04-18
 
 ### Fixed
