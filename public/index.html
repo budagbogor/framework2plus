@@ -1421,7 +1421,9 @@ function saveWorkspaceToLocal() {
 
 // Workspace intelligence, doctor, and auto-fix helpers live in public/js/ide-intelligence.js
 // Defaults for aiConfig
-S.aiConfig = Object.assign({provider:'sumopod', model:'deepseek-v3-2-251201', apiKey:'', connected:false, enabled:false, useProxy:true}, S.aiConfig);
+const DEFAULT_NATIVE_AI_CONFIG = {provider:'sumopod', model:'deepseek-v3-2-251201', apiKey:'', connected:false, enabled:false, useProxy:true};
+const DEFAULT_WEB_AI_CONFIG = {provider:'puter', model:'openrouter:openrouter/free', apiKey:'', connected:false, enabled:false, useProxy:false};
+S.aiConfig = Object.assign(S.isNative ? DEFAULT_NATIVE_AI_CONFIG : DEFAULT_WEB_AI_CONFIG, S.aiConfig);
 
 const MODEL_ALIASES = {
   sumopod: {
@@ -1511,6 +1513,16 @@ const AI_PROVIDERS = {
     ]
   }
 };
+
+if (!S.isNative) {
+  const shouldPreferPuterForWeb = !S.aiConfig.provider
+    || (S.aiConfig.provider === 'sumopod' && !S.aiConfig.apiKey && !S.aiConfig.enabled);
+  if (shouldPreferPuterForWeb) {
+    S.aiConfig.provider = 'puter';
+    S.aiConfig.model = 'openrouter:openrouter/free';
+    S.aiConfig.useProxy = false;
+  }
+}
 
 function getProviderConfig(providerKey){
   const base = AI_PROVIDERS[providerKey];
@@ -4932,6 +4944,11 @@ function openAIPanel(){
       <div class="ai-status-text" id="aiStatusText">${statusText}</div>
     </div>
 
+    ${!S.isNative ? `
+    <div style="font-size:11px;color:var(--text3);line-height:1.6;margin:-4px 0 14px;">
+      Web mode: provider <strong>Puter.js</strong> paling aman untuk hosting statis. Provider lain butuh endpoint <code>/api/ai-proxy</code> aktif di host serverless seperti Vercel.
+    </div>` : ''}
+
     <label class="ai-label">Provider</label>
     <div class="ai-provider-tabs" id="aiProvTabs">
       ${Object.entries(AI_PROVIDERS).map(([key, p])=>`
@@ -5063,6 +5080,31 @@ async function waitForPuterReady(timeoutMs = 6000){
   throw new Error('Puter.js belum siap. Coba tunggu beberapa detik lalu ulangi.');
 }
 
+const WEB_PROXY_STATUS = {
+  checked: false,
+  available: false
+};
+
+async function isWebProxyAvailable(force = false){
+  if (S.isNative) return true;
+  if (WEB_PROXY_STATUS.checked && !force) return WEB_PROXY_STATUS.available;
+
+  try {
+    const res = await withTimeout(fetch('/api/ai-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    }), 5000, 'web proxy probe');
+    const contentType = res.headers.get('content-type') || '';
+    WEB_PROXY_STATUS.available = contentType.includes('application/json') && (res.status === 400 || res.status === 405);
+  } catch (err) {
+    WEB_PROXY_STATUS.available = false;
+  }
+
+  WEB_PROXY_STATUS.checked = true;
+  return WEB_PROXY_STATUS.available;
+}
+
 async function requestAIProxy({ provider, apiUrl, apiKey, payload, method = 'POST' }){
   if (S.isNative && invoke) {
     const data = await withTimeout(invoke('ai_proxy_request', {
@@ -5079,6 +5121,11 @@ async function requestAIProxy({ provider, apiUrl, apiKey, payload, method = 'POS
       status: 200,
       json: async () => data
     };
+  }
+
+  const proxyReady = await isWebProxyAvailable();
+  if (!proxyReady) {
+    throw new Error('Proxy AI web tidak tersedia di host ini. Gunakan provider Puter.js untuk mode web, atau deploy ke Vercel/serverless agar endpoint /api/ai-proxy aktif.');
   }
 
   return await withTimeout(fetch('/api/ai-proxy', {
