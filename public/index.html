@@ -1983,7 +1983,25 @@ function nextStep(){
 function prevStep(){if(S.step>0){S.step--;render();window.scrollTo(0,0)}}
 
 // ── Generate ──
-function doGenerate(){S.generating=true;render();setTimeout(()=>{S.generating=false;S.generated=buildOutput();render()},3500)}
+function doGenerate(){
+  S.generating = true;
+  render();
+  setTimeout(() => {
+    try {
+      const output = buildOutput();
+      S.generating = false;
+      S.generated = output;
+      S.activeTab = 'structure';
+      render();
+    } catch (err) {
+      console.error('Generate failed:', err);
+      S.generating = false;
+      S.generated = null;
+      render();
+      alert(`Generate gagal: ${getErrorMessage(err)}`);
+    }
+  }, 3500);
+}
 
 function renderGenerating(){
   const msgs=['Menganalisis kebutuhanmu…','Menentukan arsitektur terbaik…','Menyusun struktur folder…','Menulis PRD & Master Plan…','Membuat starter prompts…','Finalisasi output…'];
@@ -3313,7 +3331,19 @@ function legacyRenderOutput(){
 
   let panel='';
   if(at==='builder'){
-    panel = renderBuilderPanel();
+    try {
+      panel = renderBuilderPanel();
+    } catch (err) {
+      console.error('legacy renderBuilderPanel failed:', err);
+      panel = `<div class="out-section">
+        <div class="out-sec-head"><div class="out-sec-icon ${gClass}">!</div><div>
+          <div class="out-sec-title">Builder Panel Gagal Dimuat</div>
+          <div class="out-sec-sub">Output generate berhasil dibuat, tetapi panel builder melempar error runtime.</div>
+        </div></div>
+        <div class="code-block"><div class="code-header"><span class="code-lang-tag">Error</span></div>
+          <pre>${esc(getErrorMessage(err))}</pre></div>
+      </div>`;
+    }
   } else if(at==='structure'){
     panel=`<div class="out-section">
       <div class="out-sec-head"><div class="out-sec-icon ${gClass}">📁</div><div>

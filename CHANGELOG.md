@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.15] - 2026-04-24
+
+### Fixed
+- Menambahkan guard `try/catch` pada proses generate agar app tidak berhenti diam di layar loading saat `buildOutput()` atau render output gagal.
+- Mengalihkan tab awal hasil generate ke `structure` supaya render tidak langsung bergantung pada panel builder yang lebih berat.
+- Menambahkan fallback error panel untuk builder output di jalur modular dan legacy renderer agar kegagalan runtime tampil jelas, bukan terlihat seperti proses macet.
+
 ## [2.0.14] - 2026-04-24
 
 ### Fixed

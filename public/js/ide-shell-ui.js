@@ -11,6 +11,18 @@ function setTab(t) {
   window.scrollTo(0, 0);
 }
 
+function renderBuilderPanelFallback(err) {
+  const message = typeof getErrorMessage === 'function' ? getErrorMessage(err) : String(err);
+  return `<div class="out-section">
+    <div class="out-sec-head"><div class="out-sec-icon">!</div><div>
+      <div class="out-sec-title">Builder Panel Gagal Dimuat</div>
+      <div class="out-sec-sub">Output generate tetap berhasil dibuat, tetapi panel builder melempar error runtime.</div>
+    </div></div>
+    <div class="code-block"><div class="code-header"><span class="code-lang-tag">Error</span></div>
+      <pre>${esc(message)}</pre></div>
+  </div>`;
+}
+
 function renderOutput() {
   const g = S.generated;
   const isA = g.mode === 'adlc';
@@ -30,7 +42,12 @@ function renderOutput() {
 
   let panel = '';
   if (at === 'builder') {
-    panel = renderBuilderPanel();
+    try {
+      panel = renderBuilderPanel();
+    } catch (err) {
+      console.error('renderBuilderPanel failed:', err);
+      panel = renderBuilderPanelFallback(err);
+    }
   } else if (at === 'structure') {
     panel = `<div class="out-section">
       <div class="out-sec-head"><div class="out-sec-icon ${gClass}">DIR</div><div>
