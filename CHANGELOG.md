@@ -4,6 +4,13 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.14] - 2026-04-24
+
+### Fixed
+- Menambahkan fallback AI web ke `Puter.js` agar versi web tetap bisa dipakai di hosting statis.
+- Menambahkan deteksi ketersediaan `/api/ai-proxy` supaya kegagalan koneksi AI web memberi pesan yang akurat.
+- Menyiapkan build web dan installer desktop terbaru dari patch koneksi AI web ini.
+
 ## [2.0.13] - 2026-04-23
 
 ### Fixed

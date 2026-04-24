@@ -1,6 +1,6 @@
 {
   "productName": "DevForge Studio",
-  "version": "2.0.13",
+  "version": "2.0.14",
   "identifier": "com.devforge.studio.native",
   "build": {
     "beforeDevCommand": "npm run dev",
