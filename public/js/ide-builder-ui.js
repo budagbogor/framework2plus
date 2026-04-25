@@ -92,45 +92,45 @@ function renderBuilderPanel(){
                 <div class="file-tree">${files || '<div style="opacity:0.3; font-size:11px; padding:20px; text-align:center;">Menyiapkan workspace...</div>'}</div>
             </div>
             <div class="builder-main">
-                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px;">
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Phase</div>
-                        <div style="font-size:18px; font-weight:800; margin-top:6px;">${esc(meta.phase || 'idle')}</div>
-                        <div style="font-size:11px; opacity:.7; margin-top:6px;">${meta.lastUpdated ? `Update ${esc(meta.lastUpdated)}` : 'Menunggu build pertama'}</div>
+                <div class="builder-stats">
+                    <div class="builder-card compact">
+                        <div class="builder-kicker">Phase</div>
+                        <div class="builder-value">${esc(meta.phase || 'idle')}</div>
+                        <div class="builder-meta">${meta.lastUpdated ? `Update ${esc(meta.lastUpdated)}` : 'Menunggu build pertama'}</div>
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Workspace</div>
-                        <div style="font-size:18px; font-weight:800; margin-top:6px;">${meta.fileCount || 0} file</div>
-                        <div style="font-size:11px; opacity:.7; margin-top:6px;">Checklist ${meta.checklistDone || 0}/${meta.checklistTotal || 0}</div>
+                    <div class="builder-card compact">
+                        <div class="builder-kicker">Workspace</div>
+                        <div class="builder-value">${meta.fileCount || 0} file</div>
+                        <div class="builder-meta">Checklist ${meta.checklistDone || 0}/${meta.checklistTotal || 0}</div>
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Critical</div>
-                        <div style="font-size:18px; font-weight:800; margin-top:6px;">${meta.missingCriticalFiles?.length ? `${meta.missingCriticalFiles.length} missing` : 'Complete'}</div>
-                        <div style="font-size:11px; opacity:.7; margin-top:6px;">${meta.missingCriticalFiles?.length ? esc(meta.missingCriticalFiles.join(', ')) : 'File inti terdeteksi'}</div>
+                    <div class="builder-card compact">
+                        <div class="builder-kicker">Critical</div>
+                        <div class="builder-value">${meta.missingCriticalFiles?.length ? `${meta.missingCriticalFiles.length} missing` : 'Complete'}</div>
+                        <div class="builder-meta">${meta.missingCriticalFiles?.length ? esc(meta.missingCriticalFiles.join(', ')) : 'File inti terdeteksi'}</div>
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Health</div>
-                        <div style="font-size:18px; font-weight:800; margin-top:6px;">${insights.healthScore}/100</div>
-                        <div style="font-size:11px; opacity:.7; margin-top:6px;">${esc(runtime.projectType)} via ${esc(runtime.packageManager)}</div>
+                    <div class="builder-card compact">
+                        <div class="builder-kicker">Health</div>
+                        <div class="builder-value">${insights.healthScore}/100</div>
+                        <div class="builder-meta">${esc(runtime.projectType)} via ${esc(runtime.packageManager)}</div>
                     </div>
                 </div>
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px; margin-bottom:16px;">
-                    <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:8px;">Build Summary</div>
+                <div class="builder-card" style="margin-bottom:16px;">
+                    <div class="builder-kicker">Build Summary</div>
                     <div style="font-size:14px; line-height:1.6; color:rgba(255,255,255,0.9);">${esc(meta.summary || 'Belum ada ringkasan build.')}</div>
                     <div style="margin-top:10px; font-size:12px; opacity:.8;"><strong style="color:#fff;">Current goal:</strong> ${esc(meta.currentGoal || 'Menunggu instruksi agent.')}</div>
                     ${meta.projectBrainSummary ? `<div style="margin-top:10px; font-size:12px; opacity:.76;"><strong style="color:#fff;">Project brain:</strong> ${esc(meta.projectBrainSummary)}</div>` : ''}
                     ${meta.bundleValidationSummary ? `<div style="margin-top:10px; font-size:12px; opacity:.76;"><strong style="color:#fff;">Bundle validation:</strong> ${esc(meta.bundleValidationSummary)}</div>` : ''}
                     ${meta.remainingTasks?.length ? `
                     <div style="margin-top:12px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:8px;">Remaining Tasks</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                            ${meta.remainingTasks.slice(0, 6).map(task => `<span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); font-size:11px;">${esc(task)}</span>`).join('')}
+                        <div class="builder-kicker" style="margin-bottom:8px;">Remaining Tasks</div>
+                        <div class="builder-pill-row">
+                            ${meta.remainingTasks.slice(0, 6).map(task => `<span class="builder-badge">${esc(task)}</span>`).join('')}
                         </div>
                     </div>` : ''}
                 </div>
-                <div style="display:grid; grid-template-columns:1.3fr .9fr; gap:16px; margin-bottom:16px;">
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">IDE Intelligence</div>
+                <div class="builder-split-grid">
+                    <div class="builder-card">
+                        <div class="builder-kicker">IDE Intelligence</div>
                         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
                             ${Object.entries(aiProfiles).map(([key, profile]) => `<button class="nav-btn" style="padding:8px 12px; font-size:11px; ${S.aiProfile===key?'background:rgba(0,240,255,0.12); border-color:rgba(0,240,255,0.28); color:#00f0ff;':''}" onclick="setAIProfile('${key}')">${esc(profile.label)}</button>`).join('')}
                         </div>
@@ -145,8 +145,8 @@ function renderBuilderPanel(){
                             <div><strong style="color:#fff;">Test:</strong> ${esc(runtime.testCommand || 'belum ada')}</div>
                         </div>
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">Diagnostics</div>
+                    <div class="builder-card">
+                        <div class="builder-kicker">Diagnostics</div>
                         <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
                             <div style="display:flex; justify-content:space-between; gap:12px;"><span>Tests</span><strong style="color:${insights.hasTests ? '#3fb950' : '#ffbd2e'}">${insights.hasTests ? 'Ready' : 'Missing'}</strong></div>
                             <div style="display:flex; justify-content:space-between; gap:12px;"><span>.env.example</span><strong style="color:${insights.hasEnvExample ? '#3fb950' : '#ffbd2e'}">${insights.hasEnvExample ? 'Ready' : 'Missing'}</strong></div>
@@ -158,10 +158,10 @@ function renderBuilderPanel(){
                     </div>
                 </div>
                 ${S.isNative ? `
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px; margin-bottom:16px;">
+                <div class="builder-card" style="margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
                         <div>
-                            <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Windows Release</div>
+                            <div class="builder-kicker" style="margin-bottom:6px;">Windows Release</div>
                             <div style="font-size:14px; font-weight:700; margin-top:6px;">${nativeState.currentLabel ? `Menjalankan ${esc(nativeState.currentLabel)}` : 'One-click install, test, build, dan bundle Tauri'}</div>
                         </div>
                         <button class="nav-btn" style="padding:8px 14px; font-size:11px;" onclick="execTerminalCmd('release')">One-Click Release</button>
@@ -205,32 +205,32 @@ function renderBuilderPanel(){
                         </a>`).join('')}
                     </div>` : `<div style="margin-top:12px; font-size:11px; opacity:.55;">Belum ada artefak <code>.exe</code> atau <code>.msi</code> yang terdeteksi.</div>`}
                 </div>` : ''}
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">Changed Files</div>
+                <div class="builder-two-col">
+                    <div class="builder-card">
+                        <div class="builder-kicker">Changed Files</div>
                         ${meta.lastChangedFiles?.length ? `
-                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                            ${meta.lastChangedFiles.slice(0, 8).map(path => `<span style="padding:6px 10px; border-radius:999px; background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.14); font-size:11px;">${esc(path)}</span>`).join('')}
+                        <div class="builder-pill-row">
+                            ${meta.lastChangedFiles.slice(0, 8).map(path => `<span class="builder-badge">${esc(path)}</span>`).join('')}
                         </div>` : `<div style="font-size:12px; opacity:.7;">Belum ada diff iterasi terakhir.</div>`}
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">Project Brain</div>
+                    <div class="builder-card">
+                        <div class="builder-kicker">Project Brain</div>
                         ${meta.projectBrainRisks?.length ? `
                         <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
                             ${meta.projectBrainRisks.slice(0, 5).map(item => `<div style="padding:8px 10px; border-radius:12px; background:rgba(0,240,255,0.07); border:1px solid rgba(0,240,255,0.14);">${esc(item)}</div>`).join('')}
                         </div>` : `<div style="font-size:12px; opacity:.7;">Project brain belum dibuat.</div>`}
                     </div>
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">Project Doctor</div>
+                    <div class="builder-card">
+                        <div class="builder-kicker">Project Doctor</div>
                         ${meta.doctorFindings?.length ? `
                         <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
                             ${meta.doctorFindings.slice(0, 5).map(item => `<div style="padding:8px 10px; border-radius:12px; background:rgba(255,189,46,0.08); border:1px solid rgba(255,189,46,0.16);">${esc(item)}</div>`).join('')}
                         </div>` : `<div style="font-size:12px; opacity:.7;">Doctor report belum dibuat.</div>`}
                     </div>
                 </div>
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px; margin-bottom:16px;">
+                <div class="builder-card" style="margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Diff Viewer</div>
+                        <div class="builder-kicker" style="margin-bottom:0;">Diff Viewer</div>
                         <div style="font-size:11px; opacity:.7;">Artefak: CHANGES_LAST_STEP.json</div>
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;">
@@ -255,9 +255,9 @@ function renderBuilderPanel(){
                         }).join('')}
                     </div>
                 </div>
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px; margin-bottom:16px;">
+                <div class="builder-card" style="margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px;">
-                        <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55;">Diff Details</div>
+                        <div class="builder-kicker" style="margin-bottom:0;">Diff Details</div>
                         <div style="font-size:11px; opacity:.7;">Preview line delta per file</div>
                     </div>
                     ${Array.isArray(lastDiff.details) && lastDiff.details.length
@@ -266,8 +266,8 @@ function renderBuilderPanel(){
                         </div>`
                         : `<div style="font-size:12px; opacity:.7;">Belum ada detail diff untuk langkah terakhir.</div>`}
                 </div>
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px; margin-bottom:16px;">
-                    <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; margin-bottom:10px;">Autonomous Queue</div>
+                <div class="builder-card" style="margin-bottom:16px;">
+                    <div class="builder-kicker">Autonomous Queue</div>
                     ${queue.length ? `
                     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px;">
                         ${queue.map(step => {
