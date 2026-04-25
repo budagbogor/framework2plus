@@ -19,6 +19,20 @@ function escapeAttr(value) {
     return String(value || '').replace(/'/g, "\\'");
 }
 
+function getBuilderWorkspacePaths() {
+    return Object.keys(S.virtualWorkspace || {});
+}
+
+function getBuilderSubstantivePaths() {
+    const metadataFiles = new Set([
+        'BUILD_STATUS.json',
+        'TASK_PLAN.md',
+        'CHANGES_LAST_STEP.json',
+        'DOCTOR_REPORT.md'
+    ]);
+    return getBuilderWorkspacePaths().filter(path => !metadataFiles.has(path));
+}
+
 function renderDiffDetailCard(item) {
     const tone = item.type === 'created' ? '#3fb950' : item.type === 'updated' ? '#00f0ff' : '#ff6b6b';
     const badge = item.deltaLines > 0 ? `+${item.deltaLines}` : `${item.deltaLines}`;
@@ -68,7 +82,10 @@ function renderBuilderPanel(){
         </div>
     `).join('');
 
-    const files = Object.keys(S.virtualWorkspace || {}).map(path => `
+    const workspacePaths = getBuilderWorkspacePaths();
+    const substantivePaths = getBuilderSubstantivePaths();
+
+    const files = workspacePaths.map(path => `
         <div class="file-item ${S.activeFile===path?'active':''}" onclick="viewVirtualFile('${path}')">
             <span>${getBuilderFileEmoji(path)}</span>
             ${path}
@@ -77,7 +94,7 @@ function renderBuilderPanel(){
 
     const gClass = (S.mode === 'website') ? 'pink' : (S.mode === 'adlc') ? 'green' : (S.mode === 'desktop') ? 'amber' : '';
 
-    if(!S.building && Object.keys(S.virtualWorkspace || {}).length === 0){
+    if(!S.building && substantivePaths.length === 0){
         return renderBuilderEmptyState(gClass);
     }
 
@@ -293,15 +310,15 @@ function renderBuilderPanel(){
                     </div>` : `<div style="font-size:12px; opacity:.7;">Queue build belum diinisialisasi.</div>`}
                 </div>
                 <div class="workflow-steps">
-                    <div class="step-item ${Object.keys(S.virtualWorkspace).length > 0 ? 'done' : 'active'}">
-                        <div class="step-num">${Object.keys(S.virtualWorkspace).length > 0 ? '✓' : '1'}</div>
+                    <div class="step-item ${substantivePaths.length > 0 ? 'done' : 'active'}">
+                        <div class="step-num">${substantivePaths.length > 0 ? '✓' : '1'}</div>
                         <div class="step-text">BUILD CODE</div>
                     </div>
-                    <div class="step-item ${S.isDevRunning ? 'done' : (Object.keys(S.virtualWorkspace).length > 0 ? 'active' : '')}">
+                    <div class="step-item ${S.isDevRunning ? 'done' : (substantivePaths.length > 0 ? 'active' : '')}">
                         <div class="step-num">${S.isDevRunning ? '✓' : '2'}</div>
                         <div class="step-text">START DEV</div>
                     </div>
-                    <div class="step-item ${Object.keys(S.virtualWorkspace).length > 0 ? 'active' : ''}">
+                    <div class="step-item ${substantivePaths.length > 0 ? 'active' : ''}">
                         <div class="step-num">3</div>
                         <div class="step-text">PREVIEW</div>
                     </div>
