@@ -4,6 +4,12 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.16] - 2026-04-25
+
+### Fixed
+- Memperbaiki renderer Live Builder yang crash karena teks fallback artefak release memakai backtick di dalam template string JavaScript.
+- Mengganti label artefak `.exe` dan `.msi` ke markup yang aman sehingga panel builder bisa dirender penuh kembali.
+
 ## [2.0.15] - 2026-04-24
 
 ### Fixed

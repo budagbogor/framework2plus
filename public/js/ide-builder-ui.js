@@ -203,7 +203,7 @@ function renderBuilderPanel(){
                             <div style="font-size:12px; font-weight:700; color:${item.artifact_type === 'exe' ? '#3fb950' : '#00f0ff'};">${esc(item.file_name)}</div>
                             <div style="font-size:11px; opacity:.68; margin-top:6px;">${esc(item.artifact_type.toUpperCase())} • ${(item.size_bytes / (1024 * 1024)).toFixed(2)} MB</div>
                         </a>`).join('')}
-                    </div>` : `<div style="margin-top:12px; font-size:11px; opacity:.55;">Belum ada artefak `.exe` atau `.msi` yang terdeteksi.</div>`}
+                    </div>` : `<div style="margin-top:12px; font-size:11px; opacity:.55;">Belum ada artefak <code>.exe</code> atau <code>.msi</code> yang terdeteksi.</div>`}
                 </div>` : ''}
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
