@@ -4,6 +4,12 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.19] - 2026-04-25
+
+### Fixed
+- Memperbaiki state kosong Live Builder agar file metadata seperti `BUILD_STATUS.json`, `TASK_PLAN.md`, `CHANGES_LAST_STEP.json`, dan `DOCTOR_REPORT.md` tidak lagi dihitung sebagai project nyata.
+- Mengembalikan tampilan awal builder saat workspace hanya berisi artefak status sisa dari sesi sebelumnya, sehingga tombol mulai build tetap muncul dan berfungsi.
+
 ## [2.0.18] - 2026-04-25
 
 ### Fixed
