@@ -4,6 +4,12 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.18] - 2026-04-25
+
+### Fixed
+- Mengembalikan struktur Live Builder ke layout berbasis class CSS yang lebih stabil agar panel statistik, summary, diagnostics, diff, dan queue tidak jatuh menjadi tampilan teks mentah.
+- Menyelaraskan section builder utama ke grid dan card tetap supaya hasil render lebih mendekati tampilan builder awal.
+
 ## [2.0.17] - 2026-04-25
 
 ### Fixed

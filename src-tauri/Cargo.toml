@@ -1,6 +1,6 @@
 [package]
 name = "devforge-studio"
-version = "2.0.17"
+version = "2.0.18"
 description = "Native AI IDE powered by DevForge"
 authors = ["DevForge Team"]
 edition = "2021"
