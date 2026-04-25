@@ -4,6 +4,12 @@ Semua perubahan penting pada DevForge Studio dicatat di sini.
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.17] - 2026-04-25
+
+### Fixed
+- Mempertegas styling kontainer Live Builder agar panel utama tidak tampil seperti teks mentah di atas background gelap.
+- Menambahkan override visual pada section builder untuk mengembalikan kontras kartu, padding, dan scroll area yang lebih stabil.
+
 ## [2.0.16] - 2026-04-25
 
 ### Fixed
