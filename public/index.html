@@ -1425,33 +1425,49 @@ const AI_PROVIDERS = {
     keyPlaceholder: 'sp-xxxxxxxxxxxxxxxxxxxxxxxx',
     docsUrl: 'https://sumopod.com/dashboard/ai/quickstart',
     models: [
-      {id:'seed-2-0-lite-free',  label:'Seed 2.0 Lite (GRATIS)',     provider:'byteplus', free:true},
-      {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:true},
-      {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
-      {id:'seed-2-0-mini-free',  label:'Seed 2.0 Mini (GRATIS)',      provider:'byteplus', free:true},
-      {id:'seed-2-0-mini',       label:'Seed 2.0 Mini',               provider:'byteplus', free:false},
-      {id:'seed-2-0-pro',        label:'Seed 2.0 Pro',                provider:'byteplus', free:true},
-      {id:'seed-2-0-pro-free',   label:'Seed 2.0 Pro (GRATIS)',       provider:'byteplus', free:true},
-      {id:'deepseek-v3-2',       label:'DeepSeek V3.2',               provider:'byteplus', free:false},
-      {id:'deepseek-r1',         label:'DeepSeek R1 (Thinking)',      provider:'byteplus', free:false},
-      {id:'kimi-k2',             label:'Kimi K2',                     provider:'byteplus', free:false},
-      {id:'kimi-k2-thinking',    label:'Kimi K2 Thinking',            provider:'byteplus', free:false},
-      {id:'glm-4-7',             label:'GLM-4-7',                     provider:'byteplus', free:false},
-      {id:'seed-1-8',            label:'Seed 1.8',                    provider:'byteplus', free:false},
-      {id:'gemini/gemini-2.0-flash',       label:'Gemini 2.0 Flash',          provider:'google',   free:false},
-      {id:'gemini/gemini-2.0-flash-lite',  label:'Gemini 2.0 Flash Lite',     provider:'google',   free:false},
-      {id:'gemini/gemini-2.5-flash',       label:'Gemini 2.5 Flash',          provider:'google',   free:false},
-      {id:'gemini/gemini-2.5-pro',         label:'Gemini 2.5 Pro',            provider:'google',   free:false},
-      {id:'gemini/gemini-3-flash-preview', label:'Gemini 3 Flash (Preview)',   provider:'google',   free:false},
       {id:'claude-haiku-4-5',              label:'Claude Haiku 4.5',           provider:'anthropic',free:false},
-      {id:'gpt-4.1',             label:'GPT-4.1',                     provider:'openai',   free:false},
-      {id:'gpt-4.1-mini',        label:'GPT-4.1 Mini',                provider:'openai',   free:false},
-      {id:'gpt-4o',              label:'GPT-4o',                      provider:'openai',   free:false},
-      {id:'gpt-4o-mini',         label:'GPT-4o Mini',                 provider:'openai',   free:false},
-      {id:'gpt-5',               label:'GPT-5',                       provider:'openai',   free:false},
-      {id:'gpt-5-mini',          label:'GPT-5 Mini',                  provider:'openai',   free:false},
-      {id:'glm-5',               label:'GLM-5',                       provider:'z.ai',     free:false},
-      {id:'glm-5-code',          label:'GLM-5 Code',                  provider:'z.ai',     free:false},
+      {id:'claude-opus-4-7',               label:'Claude Opus 4.7',            provider:'anthropic',free:false},
+      {id:'claude-opus-4-8',               label:'Claude Opus 4.8',            provider:'anthropic',free:false},
+      {id:'claude-sonnet-4-6',             label:'Claude Sonnet 4.6',          provider:'anthropic',free:false},
+      {id:'deepseek-v4-flash',             label:'DeepSeek V4 Flash',          provider:'deepseek', free:false},
+      {id:'deepseek-v4-pro',               label:'DeepSeek V4 Pro',            provider:'deepseek', free:false},
+      {id:'gemini/gemini-2.5-flash',       label:'Gemini 2.5 Flash',           provider:'google',   free:false},
+      {id:'gemini/gemini-2.5-flash-lite',  label:'Gemini 2.5 Flash Lite',      provider:'google',   free:false},
+      {id:'gemini/gemini-3-flash-preview', label:'Gemini 3 Flash Preview',     provider:'google',   free:false},
+      {id:'gemini/gemini-3.1-flash-lite',  label:'Gemini 3.1 Flash Lite',      provider:'google',   free:false},
+      {id:'gemini/gemini-3.1-pro-preview', label:'Gemini 3.1 Pro Preview',     provider:'google',   free:false},
+      {id:'gemini/gemini-3.5-flash',       label:'Gemini 3.5 Flash',           provider:'google',   free:false},
+      {id:'gemini/gemini-embedding-001',   label:'Gemini Embedding 001',       provider:'google',   free:false},
+      {id:'glm-5',                         label:'GLM-5',                      provider:'z.ai',     free:false},
+      {id:'glm-5-turbo',                   label:'GLM-5 Turbo',                provider:'z.ai',     free:false},
+      {id:'glm-5.1',                       label:'GLM-5.1',                    provider:'sumopod',  free:false},
+      {id:'glm-5.2',                       label:'GLM-5.2',                    provider:'z.ai',     free:false},
+      {id:'glm-5v-turbo',                  label:'GLM-5V Turbo',               provider:'sumopod',  free:false},
+      {id:'gpt-4.1',                       label:'GPT-4.1',                    provider:'openai',   free:false},
+      {id:'gpt-4.1-mini',                  label:'GPT-4.1 Mini',               provider:'openai',   free:false},
+      {id:'gpt-4.1-nano',                  label:'GPT-4.1 Nano',               provider:'openai',   free:false},
+      {id:'gpt-5',                         label:'GPT-5',                      provider:'openai',   free:false},
+      {id:'gpt-5-mini',                    label:'GPT-5 Mini',                 provider:'openai',   free:false},
+      {id:'gpt-5-nano',                    label:'GPT-5 Nano',                 provider:'openai',   free:false},
+      {id:'gpt-5.4',                       label:'GPT-5.4',                    provider:'openai',   free:false},
+      {id:'gpt-5.4-mini',                  label:'GPT-5.4 Mini',               provider:'openai',   free:false},
+      {id:'gpt-5.4-nano',                  label:'GPT-5.4 Nano',               provider:'openai',   free:false},
+      {id:'kimi-k2.6',                     label:'Kimi K2.6',                  provider:'moonshoot',free:false},
+      {id:'kimi-k2.7',                     label:'Kimi K2.7',                  provider:'moonshoot',free:false},
+      {id:'mimo-v2.5',                     label:'Mimo V2.5',                  provider:'mimo',     free:false},
+      {id:'mimo-v2.5-pro',                 label:'Mimo V2.5 Pro',              provider:'mimo',     free:false},
+      {id:'MiniMax-M2.7-highspeed',        label:'MiniMax M2.7 Highspeed',     provider:'sumopod',  free:false},
+      {id:'MiniMax-M3',                    label:'MiniMax M3',                 provider:'minimax',  free:false},
+      {id:'qwen3.6-flash',                 label:'Qwen 3.6 Flash',             provider:'alibaba',  free:false},
+      {id:'qwen3.6-plus',                  label:'Qwen 3.6 Plus',              provider:'alibaba',  free:false},
+      {id:'qwen3.7-max',                   label:'Qwen 3.7 Max',               provider:'alibaba',  free:false},
+      {id:'qwen3.7-plus',                  label:'Qwen 3.7 Plus',              provider:'alibaba',  free:false},
+      {id:'seed-2-0-code',                 label:'Seed 2.0 Code',              provider:'byteplus', free:false},
+      {id:'seed-2-0-lite',                 label:'Seed 2.0 Lite',              provider:'byteplus', free:false},
+      {id:'seed-2-0-mini',                 label:'Seed 2.0 Mini',              provider:'byteplus', free:false},
+      {id:'seed-2-0-pro',                  label:'Seed 2.0 Pro',               provider:'byteplus', free:false},
+      {id:'text-embedding-3-large',        label:'Text Embedding 3 Large',     provider:'openai',   free:false},
+      {id:'text-embedding-3-small',        label:'Text Embedding 3 Small',     provider:'openai',   free:false}
     ]
   },
   puter: {
@@ -5064,7 +5080,10 @@ function renderBuilderPanel(){
             <div class="builder-sidebar">
                 <div class="builder-head">
                     <span class="builder-title">Explorer ${S.isNative ? '🏠' : '☁️'}</span>
-                    ${!S.building ? `<button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 6px 12px; font-size: 11px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.2); border-radius: 8px;">📥 Export</button>` : ''}
+                    <div style="display: flex; gap: 8px;">
+                        ${!S.building ? `<button class="nav-btn" onclick="resetBuilder()" style="padding: 6px 12px; font-size: 11px; background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 8px;">🔄 Reset</button>
+                        <button class="nav-btn" onclick="downloadVirtualProject()" style="padding: 6px 12px; font-size: 11px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.2); border-radius: 8px;">📥 Export</button>` : ''}
+                    </div>
                 </div>
                 ${S.isNative ? `<div style="padding:10px; font-size:10px; opacity:0.6; border-bottom:1px solid rgba(255,255,255,0.05)">Path: ${S.workspacePath}</div>` : ''}
                 <div class="file-tree">${files || '<div style="opacity:0.3; font-size:11px; padding:20px; text-align:center;">Menyiapkan workspace...</div>'}</div>
@@ -5172,6 +5191,22 @@ function renderBuilderPanel(){
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function resetBuilder() {
+    if (confirm("Apakah Anda yakin ingin mereset progress pembangunan otonom? Semua kode yang digenerate akan dihapus.")) {
+        S.virtualWorkspace = {};
+        S.buildLogs = [];
+        S.building = false;
+        S.activeAgent = null;
+        S.agentStatus = {
+            architect: 'idle',
+            coder: 'idle',
+            qa: 'idle',
+            devops: 'idle'
+        };
+        render();
+    }
+}
 
 async function startAutonomousBuild(){
     S.activeAgent = null;
@@ -6301,7 +6336,10 @@ async function processBuildStep(system, user){
         if(result.finished) S.building = false;
         render();
     } else {
-        throw new Error("Gagal berkomunikasi dengan AI.");
+        let errText = "";
+        try { errText = await res.text(); } catch(e){}
+        console.error("AI Communication Error:", res.status, res.statusText, errText);
+        throw new Error(`Gagal berkomunikasi dengan AI. HTTP ${res.status}: ${res.statusText}. Detail: ${errText.substring(0, 100)}`);
     }
 }
 
