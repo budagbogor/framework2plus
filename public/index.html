@@ -1690,8 +1690,17 @@ function renderQBody(q){
 
   if(q.type==='techcard'){
     let techs=TECH[q.techKey]||[];
-    // filter by level
-    if(S.level==='beginner') techs=techs.filter(t=>t.rec!=='adv');
+    // Filter by level (Perbedaan radikal per level)
+    if(S.level==='beginner') {
+      // Pemula hanya melihat opsi "Terbaik" agar tidak bingung
+      const bests = techs.filter(t=>t.rec==='best');
+      techs = bests.length > 0 ? bests : techs.filter(t=>t.rec!=='adv');
+    } else if(S.level==='intermediate') {
+      // Menengah melihat standar dan populer, menyembunyikan yang advanced
+      techs = techs.filter(t=>t.rec!=='adv');
+    }
+    // Expert melihat semua opsi termasuk yang paling rumit (tanpa filter)
+    
     // auto-recommend based on prior answers
     const recs=smartRecs(q.techKey,S.answers);
     return `
