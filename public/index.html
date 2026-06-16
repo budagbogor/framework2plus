@@ -5846,11 +5846,11 @@ API_KEY=your_api_key_here
             <div class="dot" style="background:#ff5f56"></div>
             <div class="dot" style="background:#ffbd2e"></div>
             <div class="dot" style="background:#27c93f"></div>
-            <div class="window-title">${name} (${g.fw || 'Tauri'})</div>
+            <div class="window-title">${g.name || 'Proyek'} (${g.fw || 'Tauri'})</div>
         </div>
         <div class="window-content">
             <div class="app-icon">🖥️</div>
-            <h2 class="app-title">${name}</h2>
+            <h2 class="app-title">${g.name || 'Proyek'}</h2>
             <p class="app-desc">Selamat! Ini adalah representasi simulasi visual dari aplikasi desktop native Anda di lingkungan web. Aplikasi sesungguhnya dikompilasi menggunakan bundler ${g.fw || 'Tauri'}.</p>
             <button class="action-btn" onclick="alert('Halo dari Native GUI Desktop App Simulator!')">Jelajahi Fitur</button>
         </div>
@@ -5864,7 +5864,7 @@ API_KEY=your_api_key_here
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${name} — AI Generated Portal</title>
+    <title>${g.name || 'Proyek'} — AI Generated Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -6022,7 +6022,7 @@ API_KEY=your_api_key_here
             <span class="badge">${be}</span>
             <span class="badge">${db}</span>
         </div>
-        <h1 class="title-glow">${name}</h1>
+        <h1 class="title-glow">${g.name || 'Proyek'}</h1>
         <p class="subtitle">Aplikasi otonom modern yang dirakit menggunakan arsitektur orkestrasi Multi-Agent DevForge Studio v3.0.</p>
         
         <div class="console-box">
@@ -6185,7 +6185,7 @@ console.log("Application initialized successfully.");`;
   ]
 }`;
 
-    const readmeContent = `# ${name}
+    const readmeContent = `# ${g.name || 'Proyek'}
 
 Proyek ini dibangun secara otonom oleh **DevForge Studio Multi-Agent Orchestration v3.0**.
 
