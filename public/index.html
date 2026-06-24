@@ -1743,13 +1743,13 @@ function renderQBody(q){
     
     // auto-recommend based on prior answers
     const recs=smartRecs(q.techKey,S.answers);
+    const selSet=new Set(Array.isArray(val)?val:[val]);
     return `
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:500">
         ${q.multi?`Pilih ${q.max||'beberapa'} — klik "Lihat detail" untuk perbandingan`:'Pilih satu'}
       </div>
       <div class="tech-grid">${techs.map((t,i)=>{
-        const selArr=Array.isArray(val)?val:[val];
-        const isSel=selArr.includes(t.val);
+        const isSel=selSet.has(t.val);
         const selCls=isSel?`selected ${modeColorClass()}`:''
         const recInfo=recs[t.val];
         const isTopRec=recInfo==='top';
